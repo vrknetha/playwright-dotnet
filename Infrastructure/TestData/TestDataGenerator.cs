@@ -1,7 +1,7 @@
 using System.Globalization;
 using Bogus;
 using Microsoft.Extensions.Logging;
-using ParkPlaceSample.Config;
+using ParkPlaceSample.Infrastructure.Config;
 using ParkPlaceSample.Infrastructure.TestData.Models;
 
 namespace ParkPlaceSample.Infrastructure.TestData;
@@ -24,7 +24,15 @@ public class TestDataGenerator
     {
         _logger = logger;
         _settings = settings;
+
+        // Ensure we have test data settings
+        if (_settings.TestData == null)
+        {
+            _settings.TestData = new TestDataSettings();
+        }
+
         _faker = new Faker(_settings.TestData.Locale);
+        _logger.LogInformation("Initialized TestDataGenerator with locale: {Locale}", _settings.TestData.Locale);
     }
 
     /// <summary>

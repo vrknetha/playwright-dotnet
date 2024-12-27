@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
-using ParkPlaceSample.Config;
+using ParkPlaceSample.Infrastructure.Config;
 using ParkPlaceSample.Infrastructure.TestData;
 using ParkPlaceSample.Infrastructure.TestData.Models;
 

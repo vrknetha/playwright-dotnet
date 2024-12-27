@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
-using ParkPlaceSample.Config;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ParkPlaceSample.Infrastructure.Config;
 using ParkPlaceSample.Infrastructure.Logging;
 
 namespace ParkPlaceSample.Infrastructure.API;
@@ -12,7 +13,7 @@ namespace ParkPlaceSample.Infrastructure.API;
 public abstract class BaseApiTest
 {
     protected HttpClient HttpClient { get; private set; } = null!;
-    protected TestSettings Settings => ConfigurationLoader.Settings;
+    protected TestSettings Settings { get; private set; } = null!;
     protected ILogger Logger { get; private set; } = null!;
     protected string BaseUrl => GetBaseUrl();
 
@@ -26,6 +27,10 @@ public abstract class BaseApiTest
 
         try
         {
+            // Initialize configuration with logger
+            ConfigurationLoader.Initialize(Logger);
+            Settings = ConfigurationLoader.Settings;
+
             HttpClient = CreateHttpClient();
             await OnTestInitialize();
         }

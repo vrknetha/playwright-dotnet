@@ -1,33 +1,19 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using ParkPlaceSample.Config;
-using ParkPlaceSample.Infrastructure.UI;
+using ParkPlaceSample.Infrastructure.Config;
 
 namespace ParkPlaceSample.Pages.Components;
 
-public abstract class BaseComponent : ElementInteractionBase
+public abstract class BaseComponent
 {
-    protected BaseComponent(IPage page, ILogger logger, TestSettings settings, string rootSelector)
-        : base(page, logger, settings, rootSelector)
-    {
-    }
+    protected readonly IPage Page;
+    protected readonly ILogger Logger;
+    protected readonly TestSettings Settings;
 
-    public async Task<bool> IsVisibleAsync()
+    protected BaseComponent(IPage page, ILogger logger, TestSettings settings)
     {
-        try
-        {
-            await WaitForElementAsync(BaseSelector!, "visible");
-            return true;
-        }
-        catch (TimeoutException)
-        {
-            return false;
-        }
-    }
-
-    public async Task WaitUntilVisibleAsync()
-    {
-        Logger.LogDebug("Waiting for component to be visible: {Selector}", BaseSelector);
-        await WaitForElementAsync(BaseSelector!, "visible");
+        Page = page;
+        Logger = logger;
+        Settings = settings;
     }
 }

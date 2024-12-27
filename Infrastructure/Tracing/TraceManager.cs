@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ParkPlaceSample.Infrastructure.Tracing;
 
