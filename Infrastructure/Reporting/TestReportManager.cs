@@ -20,10 +20,18 @@ public static class TestReportManager
         Directory.CreateDirectory(_reportsPath);
         Directory.CreateDirectory(Path.Combine(_reportsPath, "Videos"));
         Directory.CreateDirectory(Path.Combine(_reportsPath, "Traces"));
+        Directory.CreateDirectory(Path.Combine(_reportsPath, "Logs"));
 
         var reportPath = Path.Combine(_reportsPath, "index.html");
         _extentReports = new AventStack.ExtentReports.ExtentReports();
         var htmlReporter = new ExtentHtmlReporter(reportPath);
+
+        // Configure HTML reporter
+        htmlReporter.Config.DocumentTitle = "Test Execution Report";
+        htmlReporter.Config.ReportName = "Playwright Test Results";
+        htmlReporter.Config.Theme = AventStack.ExtentReports.Reporter.Configuration.Theme.Standard;
+        htmlReporter.Config.CSS = AttachmentHelper.GetReportStyles();
+        htmlReporter.Config.EnableTimeline = true;
 
         // Get Playwright version
         using var playwright = await Playwright.CreateAsync();
@@ -40,8 +48,6 @@ public static class TestReportManager
         _extentReports.AddSystemInfo(".NET Version", Environment.Version.ToString());
         _extentReports.AddSystemInfo("Test Framework", "MSTest v2");
 
-        // Configure HTML reporter
-        HtmlReporterConfig.ConfigureHtmlReporter(htmlReporter);
         _extentReports.AttachReporter(htmlReporter);
     }
 

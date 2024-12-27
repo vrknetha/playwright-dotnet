@@ -1,39 +1,45 @@
 # .NET build output
 bin/
 obj/
-*.dll
-*.pdb
-*.exe
+TestResults/
+
+# Visual Studio files
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Rider files
+.idea/
+
+# Visual Studio Code files
+.vscode/
+*.code-workspace
+
+# NuGet packages
+*.nupkg
+packages/
+*.nuget.props
+*.nuget.targets
 
 # Test Results
-TestResults/
 *.trx
 *.coverage
 *.opencover.xml
 
-# IDE files
-.vs/
-.vscode/
-*.user
-*.suo
-*.userprefs
-*.sln.docstates
-
 # Playwright
 playwright-report/
 test-results/
-**/playwright/.cache/
+playwright/.cache/
 
-# Environment files
-*.env
-appsettings.*.json
-!appsettings.json
-
-# OS generated files
+# macOS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
+
+# Windows
 Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/

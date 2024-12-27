@@ -1,119 +1,126 @@
-# Cursor Rules for .NET Playwright Testing
+# Cursor Rules for .NET Playwright Testing Framework
 
 ## Code Organization
 
-### Namespaces
+1. Keep test files organized by feature or functionality
+2. Use meaningful test names that describe the test scenario
+3. Follow a consistent file structure:
+   - `Infrastructure/` for framework components
+   - `Tests/` for test files
+   - `Pages/` for page objects
+   - `TestData/` for test data and fixtures
 
-- ✅ Use `ParkPlaceSample.Infrastructure.Config` for configuration-related code
-- ✅ Use `ParkPlaceSample.Infrastructure.Base` for base test classes
-- ✅ Use `ParkPlaceSample.Infrastructure.Reporting` for reporting-related code
-- ✅ Use `ParkPlaceSample.Infrastructure.Tracing` for tracing-related code
-- ✅ Use `ParkPlaceSample.Tests` for test classes
+## Test Structure
 
-### File Structure
+1. Each test should follow the Arrange-Act-Assert pattern
+2. Use descriptive logging messages at each step
+3. Keep tests focused and independent
+4. Use proper test categories for better organization
 
-- ✅ Keep test files in the `Tests` directory
-- ✅ Keep infrastructure code in the `Infrastructure` directory
-- ✅ Keep configuration files in the project root
-- ✅ Use appropriate subdirectories for specialized components (API, UI, etc.)
+## Test Reporting
 
-## Coding Standards
+1. HTML Report Structure:
 
-### Naming Conventions
+   - Use semantic HTML with proper nesting
+   - Include CSS in a separate style section
+   - Ensure proper encoding of all dynamic content
+   - Use consistent class names for styling
 
-- ✅ Use PascalCase for class names and public members
-- ✅ Use camelCase for private fields with underscore prefix
-- ✅ Use descriptive names for test methods that indicate their purpose
-- ✅ Suffix test classes with "Test" (e.g., `SampleTest`)
+2. Report Components:
 
-### Test Methods
+   - Test header with title, status, and metadata
+   - Organized test artifacts (videos, traces, logs)
+   - Clear error messages and stack traces
+   - Downloadable attachments with proper icons
 
-- ✅ Use async/await consistently
-- ✅ Include proper test attributes (`[TestClass]`, `[TestMethod]`)
-- ✅ Implement proper test initialization and cleanup
-- ✅ Use meaningful assertions with descriptive messages
+3. Video Recording:
 
-### Error Handling
+   - Save videos with meaningful names including timestamp
+   - Provide proper video controls and download options
+   - Use appropriate video container styling
 
-- ✅ Use proper exception handling in infrastructure code
-- ✅ Log exceptions with appropriate context
-- ✅ Clean up resources in finally blocks
-- ✅ Handle async operations properly
+4. Trace Files:
 
-## Testing Best Practices
+   - Include clear instructions for viewing traces
+   - Provide direct link to Playwright Trace Viewer
+   - Add proper download options
 
-### Test Structure
+5. Log Files:
+   - Use consistent log formatting
+   - Include timestamp and log level
+   - Provide proper log file download options
 
-- ✅ Follow Arrange-Act-Assert pattern
-- ✅ Use proper logging throughout test execution
-- ✅ Include appropriate waiting strategies
-- ✅ Capture screenshots and traces for failures
+## Configuration Management
 
-### Configuration
+1. Use strongly-typed configuration classes
+2. Keep environment-specific settings in appropriate config files
+3. Use proper configuration hierarchy:
+   - Base settings in `appsettings.json`
+   - Environment overrides in `appsettings.{env}.json`
 
-- ✅ Use appsettings.json for test configuration
-- ✅ Support environment-specific settings
-- ✅ Use strongly-typed configuration classes
-- ✅ Initialize configuration before test execution
+## Error Handling
 
-### Logging
-
-- ✅ Use structured logging with appropriate log levels
-- ✅ Include context information in log messages
-- ✅ Log test steps and important actions
-- ✅ Format log messages for readability
+1. Use proper exception handling in cleanup methods
+2. Include detailed error information in reports
+3. Ensure all resources are properly disposed
 
 ## Common Mistakes to Avoid
 
-### Namespace Issues
+1. Not encoding HTML content properly
+2. Missing file paths or incorrect path construction
+3. Not handling null references properly
+4. Improper resource cleanup
+5. Inconsistent logging formats
 
-- ❌ Don't use incorrect namespace references
-- ❌ Don't mix infrastructure and test code in the same namespace
-- ❌ Don't forget to update namespaces when moving files
-- ✅ Use global using directives for common namespaces
+## Best Practices
 
-### Resource Management
+1. Test Reporting:
 
-- ❌ Don't leave resources uncleaned
-- ❌ Don't ignore Dispose patterns
-- ❌ Don't forget to handle async disposal
-- ✅ Implement proper cleanup in test base classes
+   - Use consistent styling across all reports
+   - Ensure all attachments are properly linked
+   - Provide clear instructions for trace viewing
+   - Include meaningful test metadata
 
-### Test Design
+2. Resource Management:
 
-- ❌ Don't create redundant test files
-- ❌ Don't mix test infrastructure verification with actual tests
-- ❌ Don't hardcode test data
-- ✅ Use test data generators for dynamic data
+   - Properly dispose of Playwright resources
+   - Clean up temporary files
+   - Handle video and trace files correctly
+
+3. Configuration:
+
+   - Use strongly-typed settings
+   - Validate configuration values
+   - Handle missing configuration gracefully
+
+4. Logging:
+   - Use appropriate log levels
+   - Include contextual information
+   - Format logs for readability
 
 ## Recent Learnings
 
-1. Configuration Initialization:
+1. HTML Report Generation:
 
-   - ✅ Always initialize configuration before using it
-   - ✅ Log configuration values for debugging
-   - ✅ Handle missing configuration gracefully
+   - Use proper HTML structure for better organization
+   - Include CSS styles for consistent formatting
+   - Handle file paths and URLs correctly
+   - Ensure proper encoding of all content
 
-2. Test Infrastructure:
+2. Test Artifacts:
 
-   - ✅ Verify infrastructure components with intentional failures
-   - ✅ Implement proper test reporting
-   - ✅ Enable test parallelization carefully
+   - Organize artifacts by type
+   - Provide clear download instructions
+   - Use appropriate icons and styling
+   - Include proper file metadata
 
-3. Code Organization:
-   - ✅ Remove redundant test files
-   - ✅ Keep test examples consolidated
-   - ✅ Use proper project structure
+3. Configuration:
 
-## Recommendations
+   - Use environment-specific settings
+   - Handle base URLs properly
+   - Validate configuration at startup
 
-1. Always run tests after making infrastructure changes
-2. Keep test code clean and well-documented
-3. Use proper logging for debugging
-4. Implement proper waiting strategies
-5. Handle browser automation carefully
-6. Clean up resources properly
-7. Use strongly-typed configurations
-8. Follow async/await best practices
-9. Implement proper test isolation
-10. Use appropriate test categories
+4. Resource Management:
+   - Properly handle video recordings
+   - Manage trace files effectively
+   - Clean up temporary resources

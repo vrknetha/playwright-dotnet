@@ -1,5 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Playwright;
 using ParkPlaceSample.Infrastructure.Base;
+using ParkPlaceSample.Infrastructure.Reporting;
 
 namespace ParkPlaceSample.Tests;
 
@@ -12,33 +15,36 @@ public class SampleTest : TestBase
         LogInfo("Starting end-to-end test - Initializing test execution");
 
         // Navigate to Playwright website
-        var url = "https://playwright.dev";
-        LogInfo($"Navigating to Playwright website - URL: {url}");
-        await Page.GotoAsync(url);
+        LogInfo($"Navigating to Playwright website - URL: {Settings.Environment.BaseUrl}");
+        await Page.GotoAsync(Settings.Environment.BaseUrl);
         LogInfo("Navigation complete");
         LogInfo($"Current URL: {Page.Url}");
 
-        // Click on Get Started button
+        // Wait for and click the 'Get Started' button
         LogInfo("Waiting for 'Get Started' button");
-        var getStartedButton = await Page.WaitForSelectorAsync("text=Get Started");
+        var getStartedButton = Page.GetByRole(AriaRole.Link, new() { Name = "Get Started" });
+        await getStartedButton.WaitForAsync();
         LogInfo("'Get Started' button is visible");
+
         LogInfo("Clicking 'Get Started' button");
         await getStartedButton.ClickAsync();
         LogInfo("'Get Started' button clicked");
 
         // Verify navigation to docs page
         LogInfo("Verifying navigation to docs page");
-        var currentUrl = Page.Url;
-        LogInfo($"URL verification complete - Current URL: {currentUrl}");
-        Assert.IsTrue(currentUrl.Contains("/docs/intro"), "Expected URL to contain '/docs/intro'");
+        await Page.WaitForURLAsync("**/docs/intro");
+        LogInfo($"URL verification complete - Current URL: {Page.Url}");
 
-        // Find and verify page heading
+        // Find and verify the page heading
         LogInfo("Looking for page heading");
-        var heading = await Page.TextContentAsync("h1");
-        LogInfo($"Found page heading - Text content: {heading}");
-        LogInfo($"About to verify page heading - Expected: 'Wrong Title', Actual: '{heading}'");
+        var heading = Page.GetByRole(AriaRole.Heading, new() { Name = "Installation" });
+        var headingText = await heading.TextContentAsync();
+        LogInfo($"Found page heading - Text content: {headingText}");
+
+        // Intentionally fail the test to verify infrastructure components
+        LogInfo($"About to verify page heading - Expected: 'Wrong Title', Actual: '{headingText}'");
         LogWarning("⚠️ Intentionally failing the test to verify infrastructure");
-        Assert.AreEqual("Wrong Title", heading, "This assertion is meant to fail to verify infrastructure components");
+        Assert.AreEqual("Wrong Title", headingText, "This assertion is meant to fail to verify infrastructure components");
     }
 
     [TestMethod]
@@ -46,9 +52,9 @@ public class SampleTest : TestBase
     {
         LogInfo("Starting search functionality test");
 
-        // Navigate to Playwright docs
+        // Navigate to docs page
         LogInfo("Navigating to Playwright docs");
-        await Page.GotoAsync("https://playwright.dev/docs/intro");
+        await Page.GotoAsync($"{Settings.Environment.BaseUrl}/docs/intro");
         LogInfo("Docs page loaded");
 
         // Open search dialog
@@ -63,13 +69,14 @@ public class SampleTest : TestBase
 
         // Wait for search results
         LogInfo("Waiting for search results");
-        var searchResults = await Page.QuerySelectorAllAsync("[class*='searchResult']");
-        LogInfo($"Search results found - Results count: {searchResults.Count}");
+        var searchResults = Page.Locator("[class*='searchResult']");
+        var resultsCount = await searchResults.CountAsync();
+        LogInfo($"Search results found - Results count: {resultsCount}");
 
-        // Verify results count
-        LogInfo($"Verifying results count - Expected: 100, Actual: {searchResults.Count}");
+        // Verify results count (intentionally failing)
+        LogInfo($"Verifying results count - Expected: 100, Actual: {resultsCount}");
         LogWarning("⚠️ Intentionally verifying incorrect results count");
-        Assert.AreEqual(100, searchResults.Count, $"Expected exactly 100 search results for '{searchQuery}'");
+        Assert.AreEqual(100, resultsCount, $"Expected exactly 100 search results for '{searchQuery}'");
     }
 
     [TestMethod]
@@ -77,14 +84,20 @@ public class SampleTest : TestBase
     {
         LogInfo("Starting API documentation navigation test");
 
-        // Navigate to Playwright API docs
-        await Page.GotoAsync("https://playwright.dev/docs/api/class-playwright");
-        LogInfo("API documentation page loaded");
+        // Navigate to API docs
+        LogInfo("Navigating to API documentation");
+        await Page.GotoAsync($"{Settings.Environment.BaseUrl}/docs/api/class-playwright");
+        LogInfo("API docs page loaded");
 
         // Verify page title
         var title = await Page.TitleAsync();
-        Assert.IsTrue(title.Contains("Playwright"), "Expected page title to contain 'Playwright'");
-        LogInfo("Page title verified");
+        LogInfo($"Page title: {title}");
+        Assert.IsTrue(title.Contains("Playwright"), "Page title should contain 'Playwright'");
+
+        // Take screenshot of API docs
+        var screenshotPath = Path.Combine(AppContext.BaseDirectory, "api-docs.png");
+        await Page.ScreenshotAsync(new() { Path = screenshotPath });
+        TestReport?.Log(AventStack.ExtentReports.Status.Info, AttachmentHelper.CreateLogAttachment(screenshotPath, "API Documentation Screenshot"));
     }
 
     [TestMethod]
@@ -93,18 +106,23 @@ public class SampleTest : TestBase
         LogInfo("Starting navigation and title verification test");
 
         // Navigate to homepage
-        await Page.GotoAsync("https://playwright.dev");
+        LogInfo($"Navigating to homepage - URL: {Settings.Environment.BaseUrl}");
+        await Page.GotoAsync(Settings.Environment.BaseUrl);
         LogInfo("Homepage loaded");
-
-        // Take screenshot
-        var screenshotPath = Path.Combine(TestContext.TestResultsDirectory, "homepage.png");
-        await Page.ScreenshotAsync(new() { Path = screenshotPath });
-        AddTestAttachment(screenshotPath, "Homepage Screenshot");
-        LogInfo("Screenshot captured");
 
         // Verify title
         var title = await Page.TitleAsync();
-        Assert.IsTrue(title.Contains("Playwright"), "Expected page title to contain 'Playwright'");
-        LogInfo("Title verification complete");
+        LogInfo($"Homepage title: {title}");
+        Assert.IsTrue(title.Contains("Playwright"), "Homepage title should contain 'Playwright'");
+
+        // Navigate to docs
+        LogInfo("Navigating to documentation");
+        await Page.GotoAsync($"{Settings.Environment.BaseUrl}/docs/intro");
+        LogInfo("Documentation page loaded");
+
+        // Verify docs title
+        var docsTitle = await Page.TitleAsync();
+        LogInfo($"Documentation title: {docsTitle}");
+        Assert.IsTrue(docsTitle.Contains("Installation"), "Documentation title should contain 'Installation'");
     }
 }
