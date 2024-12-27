@@ -7,7 +7,7 @@ namespace ParkPlaceSample.Tests;
 public class BaseTest
 {
     protected IBrowserContext Context { get; private set; } = null!;
-    private IBrowser _browser = null!;
+    protected IBrowser Browser { get; private set; } = null!;
     private IPlaywright _playwright = null!;
 
     public TestContext TestContext { get; set; } = null!;
@@ -16,12 +16,12 @@ public class BaseTest
     public async Task BaseTestInitialize()
     {
         _playwright = await Playwright.CreateAsync();
-        _browser = await _playwright.Chromium.LaunchAsync(new()
+        Browser = await _playwright.Chromium.LaunchAsync(new()
         {
             Headless = false,
             SlowMo = 50
         });
-        Context = await _browser.NewContextAsync(new()
+        Context = await Browser.NewContextAsync(new()
         {
             ViewportSize = new ViewportSize
             {
@@ -38,9 +38,9 @@ public class BaseTest
         {
             await Context.DisposeAsync();
         }
-        if (_browser != null)
+        if (Browser != null)
         {
-            await _browser.DisposeAsync();
+            await Browser.DisposeAsync();
         }
         _playwright?.Dispose();
     }

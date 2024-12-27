@@ -144,6 +144,8 @@ steps:
     displayName: "Run Tests"
 ```
 
+IMPORTANT: Before generating the code, check the existing code implementation. many times we have already implemented the code but just to solve the current problem, we should not delete the existing code. We should first analyse the existing code and then generate only the required code.
+
 Remember:
 
 - Focus on practical implementations over theoretical discussions

@@ -32,10 +32,10 @@ public class TraceManager
         });
     }
 
-    public async Task StopTracingAsync(bool testFailed)
+    public async Task<string> StopTracingAsync(bool testFailed)
     {
-        if (!_settings.Enabled) return;
-        if (_settings.Mode == TracingMode.OnFailure && !testFailed) return;
+        if (!_settings.Enabled) return string.Empty;
+        if (_settings.Mode == TracingMode.OnFailure && !testFailed) return string.Empty;
 
         var traceFileName = $"{_testContext.TestName}_{DateTime.Now:yyyyMMdd_HHmmss}.zip";
         var tracePath = Path.Combine(_settings.Directory, traceFileName);
@@ -45,5 +45,7 @@ public class TraceManager
 
         _logger.LogInformation("Trace saved to: {TracePath}", tracePath);
         _testContext.AddResultFile(tracePath);
+
+        return tracePath;
     }
 }
