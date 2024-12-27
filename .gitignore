@@ -1,0 +1,39 @@
+# .NET build output
+bin/
+obj/
+*.dll
+*.pdb
+*.exe
+
+# Test Results
+TestResults/
+*.trx
+*.coverage
+*.opencover.xml
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+
+# Playwright
+playwright-report/
+test-results/
+**/playwright/.cache/
+
+# Environment files
+*.env
+appsettings.*.json
+!appsettings.json
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
