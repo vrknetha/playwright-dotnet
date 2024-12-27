@@ -4,7 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using AventStack.ExtentReports;
 using AventStack.ExtentReports.Reporter;
 using System.Runtime.InteropServices;
-using ParkPlaceSample.Infrastructure.Tracing;
+using System.Web;
 
 namespace ParkPlaceSample.Tests;
 
@@ -66,9 +66,141 @@ public class BaseTest
         htmlReporter.Config.DocumentTitle = "Playwright Test Execution Report";
         htmlReporter.Config.ReportName = "Test Automation Results";
         htmlReporter.Config.Theme = AventStack.ExtentReports.Reporter.Configuration.Theme.Standard;
+        htmlReporter.Config.EnableTimeline = true;
 
-        // Add custom styles for dashboard enhancements
+        // Add custom styles for dashboard enhancements and log formatting
         htmlReporter.Config.CSS = @"
+            /* Reset ExtentReports default styles */
+            .test-content { border: none !important; }
+            .test-content .test-steps { border: none !important; margin: 0 !important; padding: 0 !important; }
+            .test-content .test-step { border: none !important; margin: 0 !important; padding: 0 !important; }
+            .test-content .test-step td { border: none !important; padding: 4px 8px !important; }
+            .test-content .test-step .step-details { padding: 0 !important; margin: 0 !important; }
+            .test-content .test-step .step-details > div { margin: 4px 0 !important; }
+            
+            /* Step status indicator styling */
+            .test-content .test-step .status {
+                display: inline-block !important;
+                width: 20px !important;
+                height: 20px !important;
+                line-height: 20px !important;
+                text-align: center !important;
+                border-radius: 50% !important;
+                margin-right: 8px !important;
+                font-size: 12px !important;
+                font-weight: bold !important;
+            }
+            .test-content .test-step .status.pass { background-color: #28a745 !important; color: white !important; }
+            .test-content .test-step .status.fail { background-color: #dc3545 !important; color: white !important; }
+            .test-content .test-step .status.warning { background-color: #ffc107 !important; color: #000 !important; }
+            .test-content .test-step .status.info { background-color: #0d6efd !important; color: white !important; }
+            .test-content .test-step .status.skip { background-color: #6c757d !important; color: white !important; }
+            
+            /* Step details styling */
+            .test-content .test-step .step-details {
+                display: flex !important;
+                align-items: center !important;
+                padding: 8px 12px !important;
+                background-color: #f8f9fa !important;
+                border-radius: 4px !important;
+                margin: 4px 0 !important;
+            }
+            
+            /* Step timestamp styling */
+            .test-content .test-step .timestamp {
+                color: #6c757d !important;
+                font-size: 12px !important;
+                margin-right: 12px !important;
+                font-family: Consolas, monospace !important;
+            }
+            
+            /* Step details text styling */
+            .test-content .test-step .step-details .details {
+                flex: 1 !important;
+                font-family: 'Segoe UI', Arial, sans-serif !important;
+                line-height: 1.5 !important;
+            }
+            
+            /* Log message styling */
+            .log-message {
+                padding: 8px 12px;
+                margin: 4px 0;
+                border-radius: 4px;
+                font-family: Consolas, monospace;
+                line-height: 1.5;
+                background-color: #f8f9fa;
+                border-left: 4px solid #0d6efd;
+            }
+            .log-message.warning {
+                background-color: #fff3cd;
+                border-left-color: #ffc107;
+            }
+            .log-message.error {
+                background-color: #f8d7da;
+                border-left-color: #dc3545;
+            }
+            
+            /* Error details styling */
+            .error-details {
+                margin: 8px 0 0 12px;
+                padding: 8px;
+                background: #fff3f3;
+                border-radius: 4px;
+            }
+            .error-message { margin-bottom: 8px; }
+            .stack-trace { margin-top: 8px; }
+            .stack-trace pre {
+                margin: 4px 0;
+                padding: 8px;
+                font-size: 12px;
+                background: #f8f9fa;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            /* Card styling */
+            .card {
+                margin: 10px 0;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                background: #fff;
+            }
+            .card-header {
+                padding: 10px 15px;
+                background-color: #f8f9fa;
+                border-bottom: 1px solid #dee2e6;
+            }
+            .card-body { padding: 15px; }
+            
+            /* Button styling */
+            .btn {
+                display: inline-block;
+                padding: 6px 12px;
+                margin-bottom: 15px;
+                font-size: 14px;
+                font-weight: 400;
+                text-align: center;
+                text-decoration: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .btn-primary { background-color: #0d6efd; color: white !important; }
+            .btn-success { background-color: #28a745; color: white !important; }
+            .btn-secondary { background-color: #6c757d; color: white !important; }
+            
+            /* Alert styling */
+            .alert {
+                padding: 12px;
+                margin: 8px 0;
+                border-radius: 4px;
+            }
+            .alert-info {
+                background-color: #cff4fc;
+                border: 1px solid #b6effb;
+                color: #055160;
+            }
+            
+            /* Dashboard styling */
             .dashboard-view { padding: 20px; }
             .test-stats { margin-bottom: 30px; }
             .environment-info { background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
@@ -78,6 +210,10 @@ public class BaseTest
             .timing-item { margin-bottom: 10px; }
             .test-analysis { margin-top: 30px; }
             .failure-pattern { background-color: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+            
+            /* Timeline styling */
+            .timeline-item-container { border: none !important; }
+            .timeline-item { margin: 4px 0 !important; padding: 8px !important; border-radius: 4px !important; }
         ";
 
         _extentReports.AttachReporter(htmlReporter);
@@ -93,7 +229,11 @@ public class BaseTest
             dashboardHtml.AppendLine(@"<div class='test-analysis'>");
 
             // Add timing statistics
-            var allMetrics = _testMetrics.SelectMany(x => x.Value).ToList();
+            var allMetrics = _testMetrics.SelectMany(x => x.Value)
+                                       .GroupBy(x => x.TestName)
+                                       .Select(g => g.Last()) // Take only the last execution of each test
+                                       .ToList();
+
             var avgDuration = allMetrics.Average(m => m.Duration.TotalSeconds);
             var slowestTest = allMetrics.OrderByDescending(m => m.Duration).First();
             var fastestTest = allMetrics.OrderBy(m => m.Duration).First();
@@ -134,34 +274,48 @@ public class BaseTest
     {
         _testStartTime = DateTime.Now;
 
-        // Initialize Logger
-        var loggerFactory = LoggerFactory.Create(builder =>
+        // Initialize Logger only if not already initialized
+        if (Logger == null)
         {
-            builder.AddConsole();
-        });
-        Logger = loggerFactory.CreateLogger(GetType());
+            var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddConsole();
+            });
+            Logger = loggerFactory.CreateLogger(GetType());
+        }
 
-        // Initialize Playwright
-        _playwright = await Playwright.CreateAsync();
-        Browser = await _playwright.Chromium.LaunchAsync(new()
+        // Initialize Playwright only if not already initialized
+        if (_playwright == null)
         {
-            Headless = true,
-            SlowMo = 50
-        });
+            _playwright = await Playwright.CreateAsync();
+            Browser = await _playwright.Chromium.LaunchAsync(new()
+            {
+                Headless = true,
+                SlowMo = 50
+            });
 
-        // Initialize Browser Context with video recording
-        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        var videosPath = Path.Combine(projectRoot, "TestResults", "Reports", "Videos");
+            // Initialize Browser Context with video recording
+            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+            var videosPath = Path.Combine(projectRoot, "TestResults", "Reports", "Videos");
 
-        Context = await Browser.NewContextAsync(new()
-        {
-            ViewportSize = new ViewportSize { Width = 1920, Height = 1080 },
-            RecordVideoDir = videosPath
-        });
+            Context = await Browser.NewContextAsync(new()
+            {
+                ViewportSize = new ViewportSize { Width = 1920, Height = 1080 },
+                RecordVideoDir = videosPath
+            });
 
-        // Initialize Test Report
-        TestReport = _extentReports.CreateTest(TestContext.TestName);
-        LogInfo($"Test initialized: {TestContext.TestName}");
+            // Initialize Test Report - Check if test already exists
+            var testName = TestContext.TestName;
+            TestReport = _extentReports.CreateTest(testName);
+
+            // Clear previous metrics for this test if it exists
+            if (_testMetrics.ContainsKey(testName))
+            {
+                _testMetrics[testName].Clear();
+            }
+
+            LogInfo($"Test initialized: {testName}");
+        }
     }
 
     [TestCleanup]
@@ -170,60 +324,98 @@ public class BaseTest
         var testFailed = TestContext.CurrentTestOutcome != UnitTestOutcome.Passed;
         var duration = DateTime.Now - _testStartTime;
 
-        // Record test metrics
-        var metric = new TestExecutionMetric
+        // Record test metrics only if not already recorded
+        var testName = TestContext.TestName;
+        if (!_testMetrics.ContainsKey(testName) || !_testMetrics[testName].Any())
         {
-            TestName = TestContext.TestName,
-            Duration = duration,
-            Passed = !testFailed,
-            FailureStep = testFailed ? TestReport.Status.ToString() : "",
-            Category = GetTestCategory()
-        };
+            var metric = new TestExecutionMetric
+            {
+                TestName = testName,
+                Duration = duration,
+                Passed = !testFailed,
+                FailureStep = testFailed ? TestReport?.Status.ToString() : "",
+                Category = GetTestCategory()
+            };
 
-        if (!_testMetrics.ContainsKey(TestContext.TestName))
-        {
-            _testMetrics[TestContext.TestName] = new List<TestExecutionMetric>();
+            if (!_testMetrics.ContainsKey(testName))
+            {
+                _testMetrics[testName] = new List<TestExecutionMetric>();
+            }
+            _testMetrics[testName].Add(metric);
+
+            LogInfo($"Test completed with status: {(testFailed ? "Failed" : "Passed")}");
+
+            // Update test status in ExtentReports
+            if (testFailed)
+            {
+                TestReport?.Fail("Test failed");
+                if (TestContext.CurrentTestOutcome == UnitTestOutcome.Failed)
+                {
+                    var exception = TestContext.Properties["$Exception"] as Exception;
+                    if (exception != null)
+                    {
+                        TestReport?.Log(AventStack.ExtentReports.Status.Error,
+                            $"Test failed with error: {exception.Message}\n" +
+                            $"Stack trace: {exception.StackTrace}");
+                    }
+                }
+            }
+            else
+            {
+                TestReport?.Pass("Test passed");
+            }
         }
-        _testMetrics[TestContext.TestName].Add(metric);
 
         if (Context != null)
         {
             await Context.DisposeAsync();
+            Context = null!;
         }
         if (Browser != null)
         {
             await Browser.DisposeAsync();
+            Browser = null!;
         }
-        _playwright?.Dispose();
-
-        LogInfo($"Test completed with status: {TestContext.CurrentTestOutcome}");
-
-        if (testFailed)
+        if (_playwright != null)
         {
-            TestReport.Fail("Test failed");
-        }
-        else
-        {
-            TestReport.Pass("Test passed");
+            _playwright.Dispose();
+            _playwright = null!;
         }
     }
 
     protected void LogInfo(string message)
     {
         Logger.LogInformation(message);
-        TestReport.Info(message);
+        var formattedMessage = $"<div class='log-message'>{message}</div>";
+        TestReport?.Log(AventStack.ExtentReports.Status.Info, formattedMessage);
     }
 
     protected void LogWarning(string message)
     {
         Logger.LogWarning(message);
-        TestReport.Warning(message);
+        var formattedMessage = $"<div class='log-message warning'>⚠️ {message}</div>";
+        TestReport?.Log(AventStack.ExtentReports.Status.Warning, formattedMessage);
     }
 
     protected void LogError(string message, Exception? ex = null)
     {
         Logger.LogError(ex, message);
-        TestReport.Error(message);
+        var formattedMessage = new System.Text.StringBuilder();
+        formattedMessage.AppendLine($"<div class='log-message error'>❌ {message}");
+
+        if (ex != null)
+        {
+            formattedMessage.AppendLine("<div class='error-details'>");
+            formattedMessage.AppendLine($"<div class='error-message'><b>Error:</b> {System.Web.HttpUtility.HtmlEncode(ex.Message)}</div>");
+            formattedMessage.AppendLine("<div class='stack-trace'>");
+            formattedMessage.AppendLine("<b>Stack Trace:</b>");
+            formattedMessage.AppendLine($"<pre>{System.Web.HttpUtility.HtmlEncode(ex.StackTrace)}</pre>");
+            formattedMessage.AppendLine("</div>");
+            formattedMessage.AppendLine("</div>");
+        }
+
+        formattedMessage.AppendLine("</div>");
+        TestReport?.Log(AventStack.ExtentReports.Status.Error, formattedMessage.ToString());
     }
 
     protected void AddTestAttachment(string filePath, string description)
@@ -238,55 +430,58 @@ public class BaseTest
                   isTrace ? CreateTraceAttachmentHtml(fileName) :
                   CreateGenericAttachmentHtml(fileName, description);
 
-        TestReport.Info(html);
+        TestReport?.Log(AventStack.ExtentReports.Status.Info, html);
     }
 
     private string CreateVideoAttachmentHtml(string fileName)
     {
-        return $@"
-            <div class='test-video' style='margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background-color: #f8f9fa;'>
-                <p style='margin-bottom: 10px;'><strong>Test Execution Video:</strong></p>
-                <p style='margin-bottom: 15px;'>
-                    <a href='Videos/{fileName}' download style='display: inline-block; padding: 6px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;'>
-                        <i class='fa fa-download'></i> Download Video
-                    </a>
-                </p>
+        return $@"<div class='card' style='margin: 10px 0;'>
+            <div class='card-header'>
+                <h5 class='card-title'>Test Execution Video</h5>
+            </div>
+            <div class='card-body'>
+                <a href='Videos/{fileName}' class='btn btn-primary mb-3' download>
+                    <i class='fa fa-download'></i> Download Video
+                </a>
                 <div style='position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;'>
-                    <video style='position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 4px;' controls>
+                    <video style='position: absolute; top: 0; left: 0; width: 100%; height: 100%;' controls>
                         <source src='Videos/{fileName}' type='video/webm'>
                         Your browser does not support the video tag.
                     </video>
                 </div>
-            </div>";
+            </div>
+        </div>";
     }
 
     private string CreateTraceAttachmentHtml(string fileName)
     {
-        return $@"
-            <div class='test-trace' style='margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background-color: #f8f9fa;'>
-                <p style='margin-bottom: 10px;'><strong>Test Execution Trace:</strong></p>
-                <p style='margin-bottom: 15px;'>
-                    <a href='Traces/{fileName}' download style='display: inline-block; padding: 6px 12px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;'>
-                        <i class='fa fa-file-archive-o'></i> Download Trace
-                    </a>
-                </p>
-                <div class='file-info' style='color: #6c757d;'>
+        return $@"<div class='card' style='margin: 10px 0;'>
+            <div class='card-header'>
+                <h5 class='card-title'>Test Execution Trace</h5>
+            </div>
+            <div class='card-body'>
+                <a href='Traces/{fileName}' class='btn btn-success mb-3' download>
+                    <i class='fa fa-file-archive-o'></i> Download Trace
+                </a>
+                <div class='alert alert-info'>
                     <i class='fa fa-info-circle'></i> The trace file contains detailed information about the test execution, including network requests, console logs, and screenshots.
                 </div>
-            </div>";
+            </div>
+        </div>";
     }
 
     private string CreateGenericAttachmentHtml(string fileName, string description)
     {
-        return $@"
-            <div class='test-attachment' style='margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background-color: #f8f9fa;'>
-                <p style='margin-bottom: 10px;'><strong>{description}:</strong></p>
-                <p style='margin-bottom: 15px;'>
-                    <a href='{fileName}' download style='display: inline-block; padding: 6px 12px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;'>
-                        <i class='fa fa-download'></i> Download File
-                    </a>
-                </p>
-            </div>";
+        return $@"<div class='card' style='margin: 10px 0;'>
+            <div class='card-header'>
+                <h5 class='card-title'>{description}</h5>
+            </div>
+            <div class='card-body'>
+                <a href='{fileName}' class='btn btn-secondary' download>
+                    <i class='fa fa-download'></i> Download File
+                </a>
+            </div>
+        </div>";
     }
 
     private string GetTestCategory()

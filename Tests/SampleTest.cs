@@ -13,28 +13,29 @@ public class SampleTest : BaseTest
     [TestInitialize]
     public async Task TestInitialize()
     {
-        await base.BaseTestInitialize();
-
-        _page = await Context.NewPageAsync();
-
-        // Initialize TraceManager with settings from base configuration
-        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        var reportsPath = Path.GetFullPath(Path.Combine(projectRoot, "TestResults", "Reports"));
-
-        var traceSettings = new TraceSettings
+        if (_page == null)
         {
-            Enabled = true,
-            Directory = Path.Combine(reportsPath, "Traces"),
-            Mode = TracingMode.Always,
-            Screenshots = true,
-            Snapshots = true,
-            Sources = true
-        };
+            await base.BaseTestInitialize();
 
-        _traceManager = new TraceManager(Context, Logger, traceSettings, TestContext);
-        await _traceManager.StartTracingAsync();
+            _page = await Context.NewPageAsync();
 
-        LogInfo($"Test initialized: {TestContext.TestName}");
+            // Initialize TraceManager with settings from base configuration
+            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+            var reportsPath = Path.GetFullPath(Path.Combine(projectRoot, "TestResults", "Reports"));
+
+            var traceSettings = new TraceSettings
+            {
+                Enabled = true,
+                Directory = Path.Combine(reportsPath, "Traces"),
+                Mode = TracingMode.Always,
+                Screenshots = true,
+                Snapshots = true,
+                Sources = true
+            };
+
+            _traceManager = new TraceManager(Context, Logger, traceSettings, TestContext);
+            await _traceManager.StartTracingAsync();
+        }
     }
 
     [TestCleanup]
