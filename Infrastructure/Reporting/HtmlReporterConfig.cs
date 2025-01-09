@@ -1,5 +1,6 @@
 using AventStack.ExtentReports.Reporter;
 using AventStack.ExtentReports.Reporter.Configuration;
+using NUnit.Framework;
 
 namespace ParkPlaceSample.Infrastructure.Reporting;
 
@@ -12,6 +13,29 @@ public static class HtmlReporterConfig
         htmlReporter.Config.Theme = Theme.Standard;
         htmlReporter.Config.EnableTimeline = true;
 
+        // Add test framework info
+        htmlReporter.Config.JS = @"
+            $(document).ready(function() {
+                $('.test-content').each(function() {
+                    var testName = $(this).find('.test-name').text();
+                    var testCategory = $(this).find('.test-category').text();
+                    var testDescription = $(this).find('.test-description').text();
+                    
+                    // Add test metadata
+                    var metadataHtml = '<div class=""test-metadata"">';
+                    if (testCategory) {
+                        metadataHtml += '<span class=""badge badge-primary"">' + testCategory + '</span>';
+                    }
+                    if (testDescription) {
+                        metadataHtml += '<div class=""test-description"">' + testDescription + '</div>';
+                    }
+                    metadataHtml += '</div>';
+                    
+                    $(this).find('.test-head').after(metadataHtml);
+                });
+            });
+        ";
+
         htmlReporter.Config.CSS = @"
             /* Reset ExtentReports default styles */
             .test-content { border: none !important; }
@@ -20,6 +44,34 @@ public static class HtmlReporterConfig
             .test-content .test-step td { border: none !important; padding: 4px 8px !important; }
             .test-content .test-step .step-details { padding: 0 !important; margin: 0 !important; }
             .test-content .test-step .step-details > div { margin: 4px 0 !important; }
+            
+            /* Test metadata styling */
+            .test-metadata {
+                padding: 10px;
+                margin: 10px 0;
+                background: #f8f9fa;
+                border-radius: 4px;
+            }
+            
+            .badge {
+                display: inline-block;
+                padding: 4px 8px;
+                font-size: 12px;
+                font-weight: 600;
+                border-radius: 4px;
+                margin-right: 8px;
+            }
+            
+            .badge-primary {
+                background: #0d6efd;
+                color: white;
+            }
+            
+            .test-description {
+                margin-top: 8px;
+                font-size: 14px;
+                color: #6c757d;
+            }
             
             /* Step status indicator styling */
             .test-content .test-step .status {
@@ -54,13 +106,13 @@ public static class HtmlReporterConfig
                 color: #6c757d !important;
                 font-size: 12px !important;
                 margin-right: 12px !important;
-                font-family: Consolas, monospace !important;
+                font-family: 'SFMono-Regular', Consolas, monospace !important;
             }
             
             /* Step details text styling */
             .test-content .test-step .step-details .details {
                 flex: 1 !important;
-                font-family: 'Segoe UI', Arial, sans-serif !important;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important;
                 line-height: 1.5 !important;
             }
             
@@ -69,7 +121,7 @@ public static class HtmlReporterConfig
                 padding: 8px 12px;
                 margin: 4px 0;
                 border-radius: 4px;
-                font-family: Consolas, monospace;
+                font-family: 'SFMono-Regular', Consolas, monospace;
                 line-height: 1.5;
                 background-color: #f8f9fa;
                 border-left: 4px solid #0d6efd;
@@ -99,6 +151,7 @@ public static class HtmlReporterConfig
                 background: #f8f9fa;
                 border-radius: 4px;
                 overflow-x: auto;
+                font-family: 'SFMono-Regular', Consolas, monospace;
             }
             
             /* Card styling */
@@ -107,11 +160,13 @@ public static class HtmlReporterConfig
                 border: 1px solid #dee2e6;
                 border-radius: 4px;
                 background: #fff;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.12);
             }
             .card-header {
                 padding: 10px 15px;
                 background-color: #f8f9fa;
                 border-bottom: 1px solid #dee2e6;
+                font-weight: 600;
             }
             .card-body { padding: 15px; }
             
@@ -121,12 +176,15 @@ public static class HtmlReporterConfig
                 padding: 6px 12px;
                 margin-bottom: 15px;
                 font-size: 14px;
-                font-weight: 400;
+                font-weight: 500;
                 text-align: center;
                 text-decoration: none;
                 border-radius: 4px;
                 cursor: pointer;
+                border: none;
+                transition: background-color 0.2s;
             }
+            .btn:hover { opacity: 0.9; }
             .btn-primary { background-color: #0d6efd; color: white !important; }
             .btn-success { background-color: #28a745; color: white !important; }
             .btn-secondary { background-color: #6c757d; color: white !important; }
@@ -136,27 +194,112 @@ public static class HtmlReporterConfig
                 padding: 12px;
                 margin: 8px 0;
                 border-radius: 4px;
+                border: 1px solid transparent;
             }
             .alert-info {
                 background-color: #cff4fc;
-                border: 1px solid #b6effb;
+                border-color: #b6effb;
                 color: #055160;
+            }
+            .alert-warning {
+                background-color: #fff3cd;
+                border-color: #ffecb5;
+                color: #664d03;
+            }
+            .alert-danger {
+                background-color: #f8d7da;
+                border-color: #f5c2c7;
+                color: #842029;
             }
             
             /* Dashboard styling */
             .dashboard-view { padding: 20px; }
             .test-stats { margin-bottom: 30px; }
-            .environment-info { background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
-            .category-stats { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; }
-            .category-item { flex: 1; min-width: 200px; padding: 15px; border-radius: 4px; background-color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+            .environment-info { 
+                background-color: #f8f9fa; 
+                padding: 15px; 
+                border-radius: 4px; 
+                margin-bottom: 20px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            }
+            .category-stats { 
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px; 
+                margin-bottom: 30px; 
+            }
+            .category-item { 
+                padding: 15px; 
+                border-radius: 4px; 
+                background-color: #fff; 
+                box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            }
             .timing-stats { margin-top: 20px; }
-            .timing-item { margin-bottom: 10px; }
+            .timing-item { 
+                background: #fff;
+                padding: 10px;
+                border-radius: 4px;
+                margin-bottom: 10px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            }
             .test-analysis { margin-top: 30px; }
-            .failure-pattern { background-color: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+            .failure-pattern { 
+                background-color: #fff3cd; 
+                padding: 15px; 
+                border-radius: 4px; 
+                margin-bottom: 15px;
+                border: 1px solid #ffecb5;
+            }
             
             /* Timeline styling */
             .timeline-item-container { border: none !important; }
-            .timeline-item { margin: 4px 0 !important; padding: 8px !important; border-radius: 4px !important; }
+            .timeline-item { 
+                margin: 4px 0 !important; 
+                padding: 8px !important; 
+                border-radius: 4px !important;
+                background: #fff !important;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.12) !important;
+            }
+            
+            /* Test artifacts styling */
+            .artifact-card {
+                background: #fff;
+                border-radius: 4px;
+                margin: 10px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            }
+            .artifact-header {
+                padding: 10px;
+                background: #f8f9fa;
+                border-bottom: 1px solid #dee2e6;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .artifact-content {
+                padding: 15px;
+            }
+            .artifact-preview {
+                margin-bottom: 10px;
+            }
+            .artifact-preview img,
+            .artifact-preview video {
+                max-width: 100%;
+                border-radius: 4px;
+            }
+            .artifact-details {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 14px;
+            }
+            .artifact-download {
+                color: #0d6efd;
+                text-decoration: none;
+            }
+            .artifact-download:hover {
+                text-decoration: underline;
+            }
         ";
     }
 }

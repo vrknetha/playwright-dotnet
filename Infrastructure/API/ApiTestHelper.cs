@@ -1,131 +1,234 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Playwright;
+using NUnit.Framework;
 using ParkPlaceSample.Infrastructure.Config;
-using ParkPlaceSample.Infrastructure.TestData;
+using ParkPlaceSample.Infrastructure.Config.Models;
 using ParkPlaceSample.Infrastructure.TestData.Models;
 
 namespace ParkPlaceSample.Infrastructure.API;
 
-/// <summary>
-/// Provides helper methods for API test setup and teardown operations.
-/// </summary>
 public class ApiTestHelper
 {
     private readonly ILogger _logger;
     private readonly TestSettings _settings;
-    private readonly HttpClient _httpClient;
-    private readonly TestDataGenerator _dataGenerator;
+    private readonly IAPIRequestContext _apiContext;
     private readonly List<string> _createdResources;
+    private readonly JsonSerializerOptions _jsonOptions;
 
-    /// <summary>
-    /// Initializes a new instance of the ApiTestHelper class.
-    /// </summary>
-    /// <param name="logger">The logger instance for logging operations.</param>
-    /// <param name="settings">The test settings containing configuration values.</param>
-    /// <param name="httpClient">The HTTP client for making API requests.</param>
-    public ApiTestHelper(ILogger logger, TestSettings settings, HttpClient httpClient)
+    public ApiTestHelper(ILogger logger, TestSettings settings, IAPIRequestContext apiContext)
     {
         _logger = logger;
         _settings = settings;
-        _httpClient = httpClient;
-        _dataGenerator = new TestDataGenerator(logger, settings);
+        _apiContext = apiContext;
         _createdResources = new List<string>();
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            WriteIndented = true
+        };
     }
 
     /// <summary>
-    /// Creates a test user through the API.
+    /// Sends a GET request to the specified endpoint.
     /// </summary>
-    /// <returns>The created user data.</returns>
-    public async Task<UserData> CreateTestUserAsync()
+    public async Task<T?> GetAsync<T>(string endpoint, IDictionary<string, string>? queryParams = null)
     {
-        var userData = _dataGenerator.GenerateUserData();
-        _logger.LogInformation("Creating test user: {Username}", userData.Username);
+        try
+        {
+            _logger.LogInformation("Sending GET request to {Endpoint}", endpoint);
+            var url = BuildUrl(endpoint, queryParams);
+            var response = await _apiContext.GetAsync(url);
 
-        var response = await _httpClient.PostAsJsonAsync("/api/users", userData);
-        response.EnsureSuccessStatusCode();
+            await LogResponseDetails(response);
+            Assert.That((int)response.Status, Is.InRange(200, 299), $"GET request to {url} failed with status {response.Status}");
 
-        var createdUser = await response.Content.ReadFromJsonAsync<UserData>();
-        _createdResources.Add($"users/{createdUser!.Username}");
-        return createdUser;
+            return await response.JsonAsync<T>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GET request to {Endpoint} failed", endpoint);
+            throw;
+        }
     }
 
     /// <summary>
-    /// Creates a test product through the API.
+    /// Sends a POST request to the specified endpoint.
     /// </summary>
-    /// <returns>The created product data.</returns>
-    public async Task<ProductData> CreateTestProductAsync()
+    public async Task<T?> PostAsync<T>(string endpoint, object? data = null)
     {
-        var productData = _dataGenerator.GenerateProductData();
-        _logger.LogInformation("Creating test product: {Name}", productData.Name);
+        try
+        {
+            _logger.LogInformation("Sending POST request to {Endpoint}", endpoint);
+            var response = await _apiContext.PostAsync(endpoint, new() { DataObject = data });
 
-        var response = await _httpClient.PostAsJsonAsync("/api/products", productData);
-        response.EnsureSuccessStatusCode();
+            await LogResponseDetails(response);
+            Assert.That((int)response.Status, Is.InRange(200, 299), $"POST request to {endpoint} failed with status {response.Status}");
 
-        var createdProduct = await response.Content.ReadFromJsonAsync<ProductData>();
-        _createdResources.Add($"products/{createdProduct!.SKU}");
-        return createdProduct;
+            var result = await response.JsonAsync<T>();
+            TrackCreatedResource(endpoint, result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "POST request to {Endpoint} failed", endpoint);
+            throw;
+        }
     }
 
     /// <summary>
-    /// Creates a test order through the API.
+    /// Sends a PUT request to the specified endpoint.
     /// </summary>
-    /// <param name="itemCount">The number of items to include in the order.</param>
-    /// <returns>The created order data.</returns>
-    public async Task<OrderData> CreateTestOrderAsync(int itemCount = 3)
+    public async Task<T?> PutAsync<T>(string endpoint, object data)
     {
-        var orderData = _dataGenerator.GenerateOrderData(itemCount);
-        _logger.LogInformation("Creating test order with {ItemCount} items", itemCount);
+        try
+        {
+            _logger.LogInformation("Sending PUT request to {Endpoint}", endpoint);
+            var response = await _apiContext.PutAsync(endpoint, new() { DataObject = data });
 
-        var response = await _httpClient.PostAsJsonAsync("/api/orders", orderData);
-        response.EnsureSuccessStatusCode();
+            await LogResponseDetails(response);
+            Assert.That((int)response.Status, Is.InRange(200, 299), $"PUT request to {endpoint} failed with status {response.Status}");
 
-        var createdOrder = await response.Content.ReadFromJsonAsync<OrderData>();
-        _createdResources.Add($"orders/{createdOrder!.OrderNumber}");
-        return createdOrder;
+            return await response.JsonAsync<T>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PUT request to {Endpoint} failed", endpoint);
+            throw;
+        }
     }
 
     /// <summary>
-    /// Creates a test company through the API.
+    /// Sends a DELETE request to the specified endpoint.
     /// </summary>
-    /// <returns>The created company data.</returns>
-    public async Task<CompanyData> CreateTestCompanyAsync()
+    public async Task DeleteAsync(string endpoint)
     {
-        var companyData = _dataGenerator.GenerateCompanyData();
-        _logger.LogInformation("Creating test company: {Name}", companyData.Name);
+        try
+        {
+            _logger.LogInformation("Sending DELETE request to {Endpoint}", endpoint);
+            var response = await _apiContext.DeleteAsync(endpoint);
 
-        var response = await _httpClient.PostAsJsonAsync("/api/companies", companyData);
-        response.EnsureSuccessStatusCode();
+            await LogResponseDetails(response);
+            Assert.That((int)response.Status, Is.InRange(200, 299), $"DELETE request to {endpoint} failed with status {response.Status}");
 
-        var createdCompany = await response.Content.ReadFromJsonAsync<CompanyData>();
-        _createdResources.Add($"companies/{createdCompany!.Name}");
-        return createdCompany;
+            RemoveTrackedResource(endpoint);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DELETE request to {Endpoint} failed", endpoint);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Verifies that a resource exists and matches the expected data.
+    /// </summary>
+    public async Task VerifyResourceAsync<T>(string endpoint, Action<T> verifyAction)
+    {
+        var resource = await GetAsync<T>(endpoint);
+        Assert.That(resource, Is.Not.Null, $"Resource at {endpoint} not found");
+        verifyAction(resource!);
     }
 
     /// <summary>
     /// Cleans up all resources created during the test.
     /// </summary>
-    public async Task CleanupTestResourcesAsync()
+    public async Task CleanupResourcesAsync()
     {
-        _logger.LogInformation("Cleaning up {Count} test resources", _createdResources.Count);
+        _logger.LogInformation("Cleaning up {Count} resources", _createdResources.Count);
 
-        foreach (var resource in _createdResources)
+        foreach (var resource in _createdResources.ToList())
         {
             try
             {
-                await _httpClient.DeleteAsync($"/api/{resource}");
+                await DeleteAsync(resource);
+                _logger.LogInformation("Successfully deleted resource: {Resource}", resource);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to delete test resource: {Resource}", resource);
+                _logger.LogWarning(ex, "Failed to delete resource: {Resource}", resource);
             }
         }
 
         _createdResources.Clear();
     }
 
-    /// <summary>
-    /// Gets the list of resources created during the test.
-    /// </summary>
-    /// <returns>A list of resource identifiers.</returns>
-    public IReadOnlyList<string> GetCreatedResources() => _createdResources.AsReadOnly();
+    private async Task LogResponseDetails(IAPIResponse response)
+    {
+        var statusCode = (int)response.Status;
+        var headers = response.Headers;
+        var body = await response.TextAsync();
+
+        _logger.LogInformation("Response Status: {StatusCode}", statusCode);
+        _logger.LogInformation("Response Headers: {Headers}", JsonSerializer.Serialize(headers, _jsonOptions));
+
+        if (!string.IsNullOrEmpty(body))
+        {
+            try
+            {
+                // Try to format JSON response
+                var jsonElement = JsonSerializer.Deserialize<JsonElement>(body);
+                var formattedJson = JsonSerializer.Serialize(jsonElement, _jsonOptions);
+                _logger.LogInformation("Response Body: {Body}", formattedJson);
+            }
+            catch
+            {
+                // If not JSON, log as plain text
+                _logger.LogInformation("Response Body: {Body}", body);
+            }
+        }
+    }
+
+    private string BuildUrl(string endpoint, IDictionary<string, string>? queryParams)
+    {
+        if (queryParams == null || !queryParams.Any())
+            return endpoint;
+
+        var queryString = string.Join("&", queryParams.Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
+        return $"{endpoint}?{queryString}";
+    }
+
+    private void TrackCreatedResource(string endpoint, object? resource)
+    {
+        if (resource == null) return;
+
+        // Extract ID or other identifier from the resource based on common property names
+        var resourceId = ExtractResourceIdentifier(resource);
+        if (!string.IsNullOrEmpty(resourceId))
+        {
+            var resourcePath = $"{endpoint.TrimEnd('/')}/{resourceId}";
+            _createdResources.Add(resourcePath);
+            _logger.LogInformation("Tracking created resource: {ResourcePath}", resourcePath);
+        }
+    }
+
+    private string? ExtractResourceIdentifier(object resource)
+    {
+        // Common property names for resource identifiers
+        var idPropertyNames = new[] { "Id", "ID", "id", "Identifier", "identifier", "Key", "key" };
+
+        var resourceType = resource.GetType();
+        foreach (var propertyName in idPropertyNames)
+        {
+            var property = resourceType.GetProperty(propertyName);
+            if (property != null)
+            {
+                var value = property.GetValue(resource)?.ToString();
+                if (!string.IsNullOrEmpty(value))
+                    return value;
+            }
+        }
+
+        return null;
+    }
+
+    private void RemoveTrackedResource(string endpoint)
+    {
+        var removed = _createdResources.RemoveAll(r => r.StartsWith(endpoint, StringComparison.OrdinalIgnoreCase));
+        if (removed > 0)
+        {
+            _logger.LogInformation("Removed {Count} tracked resources for endpoint: {Endpoint}", removed, endpoint);
+        }
+    }
 }

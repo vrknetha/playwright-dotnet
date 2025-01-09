@@ -1,7 +1,7 @@
 using System.Globalization;
 using Bogus;
 using Microsoft.Extensions.Logging;
-using ParkPlaceSample.Infrastructure.Config;
+using ParkPlaceSample.Infrastructure.Config.Models;
 using ParkPlaceSample.Infrastructure.TestData.Models;
 
 namespace ParkPlaceSample.Infrastructure.TestData;

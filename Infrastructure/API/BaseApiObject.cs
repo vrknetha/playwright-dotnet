@@ -1,25 +1,19 @@
 using Microsoft.Extensions.Logging;
-using ParkPlaceSample.Infrastructure.Config;
+using Microsoft.Playwright;
+using ParkPlaceSample.Infrastructure.Config.Models;
 
 namespace ParkPlaceSample.Infrastructure.API;
 
 public abstract class BaseApiObject
 {
+    protected readonly IAPIRequestContext ApiContext;
     protected readonly ILogger Logger;
     protected readonly TestSettings Settings;
-    protected readonly HttpClient HttpClient;
 
-    protected BaseApiObject(ILogger logger, TestSettings settings, HttpClient httpClient)
+    protected BaseApiObject(IAPIRequestContext apiContext, ILogger logger, TestSettings settings)
     {
+        ApiContext = apiContext;
         Logger = logger;
         Settings = settings;
-        HttpClient = httpClient;
-    }
-
-    protected string BuildUrl(string path)
-    {
-        var baseUrl = Settings.Environment.ApiBaseUrl.TrimEnd('/');
-        path = path.TrimStart('/');
-        return $"{baseUrl}/{path}";
     }
 }

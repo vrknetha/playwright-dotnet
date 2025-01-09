@@ -1,38 +1,51 @@
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
+using NUnit.Framework.Interfaces;
 using ParkPlaceSample.Infrastructure.Config;
 using ParkPlaceSample.Infrastructure.Logging;
+using Microsoft.Playwright;
+using ParkPlaceSample.Infrastructure.Config.Models;
 
 namespace ParkPlaceSample.Infrastructure.API;
 
 /// <summary>
 /// Base class for API tests providing common functionality and setup.
 /// </summary>
-[TestClass]
+[TestFixture]
 public abstract class BaseApiTest
 {
     protected HttpClient HttpClient { get; private set; } = null!;
     protected TestSettings Settings { get; private set; } = null!;
     protected ILogger Logger { get; private set; } = null!;
     protected string BaseUrl => GetBaseUrl();
+    protected IAPIRequestContext ApiContext { get; private set; } = null!;
+    private IPlaywright _playwright = null!;
 
-    public TestContext TestContext { get; set; } = null!;
-
-    [TestInitialize]
+    [SetUp]
     public virtual async Task TestInitialize()
     {
         InitializeLogger();
-        Logger.LogInformation("Starting API test: {TestName}", TestContext.TestName);
+        Logger.LogInformation("Starting API test: {TestName}", TestContext.CurrentContext.Test.Name);
 
         try
         {
             // Initialize configuration with logger
             ConfigurationLoader.Initialize(Logger);
-            Settings = ConfigurationLoader.Settings;
+            Settings = ConfigurationLoader.GetSettings<TestSettings>();
 
             HttpClient = CreateHttpClient();
             await OnTestInitialize();
+
+            // Initialize Playwright
+            _playwright = await Playwright.CreateAsync();
+
+            // Initialize API context
+            ApiContext = await _playwright.APIRequest.NewContextAsync(new()
+            {
+                BaseURL = Settings.Environment.ApiBaseUrl,
+                IgnoreHTTPSErrors = true
+            });
         }
         catch (Exception ex)
         {
@@ -41,16 +54,16 @@ public abstract class BaseApiTest
         }
     }
 
-    [TestCleanup]
+    [TearDown]
     public virtual async Task TestCleanup()
     {
         try
         {
             await OnTestCleanup();
 
-            if (TestContext.CurrentTestOutcome != UnitTestOutcome.Passed)
+            if (TestContext.CurrentContext.Result.Outcome.Status != TestStatus.Passed)
             {
-                Logger.LogWarning("API test failed: {TestOutcome}", TestContext.CurrentTestOutcome);
+                Logger.LogWarning("API test failed: {TestOutcome}", TestContext.CurrentContext.Result.Outcome.Status);
             }
             else
             {
@@ -66,6 +79,17 @@ public abstract class BaseApiTest
         {
             HttpClient.Dispose();
         }
+    }
+
+    [TearDown]
+    public virtual async Task BaseApiTestCleanup()
+    {
+        if (ApiContext != null)
+        {
+            await ApiContext.DisposeAsync();
+        }
+
+        _playwright?.Dispose();
     }
 
     protected virtual Task OnTestInitialize() => Task.CompletedTask;
@@ -106,7 +130,7 @@ public abstract class BaseApiTest
     {
         var factory = LoggerFactory.Create(builder =>
         {
-            builder.AddTestContext(TestContext);
+            builder.AddTestContext(TestContext.CurrentContext);
             builder.SetMinimumLevel(LogLevel.Information);
         });
 

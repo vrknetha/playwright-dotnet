@@ -1,128 +1,108 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using ParkPlaceSample.Infrastructure.Base;
 using ParkPlaceSample.Infrastructure.Reporting;
+using ParkPlaceSample.Infrastructure.API;
+using ParkPlaceSample.Pages;
+using ParkPlaceSample.Infrastructure.Config;
+using NUnit.Framework;
 
 namespace ParkPlaceSample.Tests;
 
-[TestClass]
+[TestFixture]
+[Category("UI")]
 public class SampleTest : TestBase
 {
-    [TestMethod]
+    private HomePage _homePage = null!;
+    private DocsPage _docsPage = null!;
+    private ApiTestHelper _apiHelper = null!;
+
+    [SetUp]
+    public override async Task BaseTestInitialize()
+    {
+        await base.BaseTestInitialize();
+
+        _homePage = new HomePage(Page, Logger, ConfigurationLoader.Configuration);
+        _docsPage = new DocsPage(Page, Logger, ConfigurationLoader.Configuration);
+        _apiHelper = new ApiTestHelper(Logger, Settings, ApiContext);
+    }
+
+    [Test]
+    [Category("Smoke")]
     public async Task SampleEndToEndTest()
     {
         LogInfo("Starting end-to-end test - Initializing test execution");
 
-        // Navigate to Playwright website
-        LogInfo($"Navigating to Playwright website - URL: {Settings.Environment.BaseUrl}");
-        await Page.GotoAsync(Settings.Environment.BaseUrl);
-        LogInfo("Navigation complete");
-        LogInfo($"Current URL: {Page.Url}");
+        // Navigate to homepage and click Get Started
+        await _homePage.NavigateAsync();
+        await _homePage.ClickGetStartedAsync();
 
-        // Wait for and click the 'Get Started' button
-        LogInfo("Waiting for 'Get Started' button");
-        var getStartedButton = Page.GetByRole(AriaRole.Link, new() { Name = "Get Started" });
-        await getStartedButton.WaitForAsync();
-        LogInfo("'Get Started' button is visible");
-
-        LogInfo("Clicking 'Get Started' button");
-        await getStartedButton.ClickAsync();
-        LogInfo("'Get Started' button clicked");
-
-        // Verify navigation to docs page
-        LogInfo("Verifying navigation to docs page");
-        await Page.WaitForURLAsync("**/docs/intro");
-        LogInfo($"URL verification complete - Current URL: {Page.Url}");
-
-        // Find and verify the page heading
-        LogInfo("Looking for page heading");
-        var heading = Page.GetByRole(AriaRole.Heading, new() { Name = "Installation" });
-        var headingText = await heading.TextContentAsync();
-        LogInfo($"Found page heading - Text content: {headingText}");
-
-        // Intentionally fail the test to verify infrastructure components
-        LogInfo($"About to verify page heading - Expected: 'Wrong Title', Actual: '{headingText}'");
-        LogWarning("⚠️ Intentionally failing the test to verify infrastructure");
-        Assert.AreEqual("Wrong Title", headingText, "This assertion is meant to fail to verify infrastructure components");
+        // Verify the installation heading on docs page
+        var headingText = await _docsPage.GetInstallationHeadingTextAsync();
+        Assert.That(headingText, Is.EqualTo("Installation"));
     }
 
-    [TestMethod]
+    [Test]
+    [Category("Search")]
     public async Task SearchFunctionalityTest()
     {
         LogInfo("Starting search functionality test");
 
-        // Navigate to docs page
-        LogInfo("Navigating to Playwright docs");
-        await Page.GotoAsync($"{Settings.Environment.BaseUrl}/docs/intro");
-        LogInfo("Docs page loaded");
-
-        // Open search dialog
-        LogInfo("Opening search dialog");
-        await Page.Keyboard.PressAsync("Control+k");
-        LogInfo("Search dialog opened");
-
-        // Enter search query
-        var searchQuery = "assertions";
-        LogInfo($"Entering search query - Query: {searchQuery}");
-        await Page.Keyboard.TypeAsync(searchQuery);
-
-        // Wait for search results
-        LogInfo("Waiting for search results");
-        var searchResults = Page.Locator("[class*='searchResult']");
-        var resultsCount = await searchResults.CountAsync();
-        LogInfo($"Search results found - Results count: {resultsCount}");
+        // Navigate to docs page and perform search
+        await _docsPage.NavigateAsync();
+        await _docsPage.SearchAsync("assertions");
 
         // Verify results count (intentionally failing)
+        var resultsCount = await _docsPage.GetSearchResultsCountAsync();
         LogInfo($"Verifying results count - Expected: 100, Actual: {resultsCount}");
         LogWarning("⚠️ Intentionally verifying incorrect results count");
-        Assert.AreEqual(100, resultsCount, $"Expected exactly 100 search results for '{searchQuery}'");
+        Assert.That(resultsCount, Is.EqualTo(100), "Expected exactly 100 search results for 'assertions'");
     }
 
-    [TestMethod]
+    [Test]
+    [Category("API")]
     public async Task APIDocsNavigationTest()
     {
         LogInfo("Starting API documentation navigation test");
 
         // Navigate to API docs
-        LogInfo("Navigating to API documentation");
-        await Page.GotoAsync($"{Settings.Environment.BaseUrl}/docs/api/class-playwright");
-        LogInfo("API docs page loaded");
+        await _docsPage.NavigateToApiDocsAsync();
 
         // Verify page title
-        var title = await Page.TitleAsync();
+        var title = await _docsPage.GetTitleAsync();
         LogInfo($"Page title: {title}");
-        Assert.IsTrue(title.Contains("Playwright"), "Page title should contain 'Playwright'");
+        Assert.That(title, Does.Contain("Playwright"), "Page title should contain 'Playwright'");
 
         // Take screenshot of API docs
         var screenshotPath = Path.Combine(AppContext.BaseDirectory, "api-docs.png");
-        await Page.ScreenshotAsync(new() { Path = screenshotPath });
+        await _docsPage.TakeScreenshotAsync(screenshotPath);
         TestReport?.Log(AventStack.ExtentReports.Status.Info, AttachmentHelper.CreateLogAttachment(screenshotPath, "API Documentation Screenshot"));
     }
 
-    [TestMethod]
+    [Test]
+    [Category("Navigation")]
     public async Task NavigationAndTitleVerificationTest()
     {
         LogInfo("Starting navigation and title verification test");
 
-        // Navigate to homepage
-        LogInfo($"Navigating to homepage - URL: {Settings.Environment.BaseUrl}");
-        await Page.GotoAsync(Settings.Environment.BaseUrl);
-        LogInfo("Homepage loaded");
+        // Navigate to homepage and verify title
+        await _homePage.NavigateAsync();
+        var title = await _homePage.GetTitleAsync();
+        Assert.That(title, Does.Contain("Playwright"), "Homepage title should contain 'Playwright'");
 
-        // Verify title
-        var title = await Page.TitleAsync();
-        LogInfo($"Homepage title: {title}");
-        Assert.IsTrue(title.Contains("Playwright"), "Homepage title should contain 'Playwright'");
+        // Navigate to docs and verify title
+        await _docsPage.NavigateAsync();
+        var docsTitle = await _docsPage.GetTitleAsync();
+        Assert.That(docsTitle, Does.Contain("Installation"), "Documentation title should contain 'Installation'");
+    }
 
-        // Navigate to docs
-        LogInfo("Navigating to documentation");
-        await Page.GotoAsync($"{Settings.Environment.BaseUrl}/docs/intro");
-        LogInfo("Documentation page loaded");
+    [Test]
+    [Category("API")]
+    public async Task ApiHealthCheckTest()
+    {
+        LogInfo("Starting API health check test");
 
-        // Verify docs title
-        var docsTitle = await Page.TitleAsync();
-        LogInfo($"Documentation title: {docsTitle}");
-        Assert.IsTrue(docsTitle.Contains("Installation"), "Documentation title should contain 'Installation'");
+        var response = await _apiHelper.GetAsync<object>("/api/health");
+        Assert.That(response, Is.Not.Null, "Health check response should not be null");
     }
 }

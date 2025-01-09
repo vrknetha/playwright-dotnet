@@ -3,384 +3,348 @@ using Microsoft.Playwright;
 using AventStack.ExtentReports;
 using ParkPlaceSample.Infrastructure.Reporting;
 using ParkPlaceSample.Infrastructure.Config;
+using ParkPlaceSample.Infrastructure.Config.Models;
 using ParkPlaceSample.Infrastructure.Tracing;
+using ParkPlaceSample.Infrastructure.API;
 using System.Text;
 using System.Web;
+using NUnit.Framework;
+using NUnit.Framework.Interfaces;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Binder;
 
 namespace ParkPlaceSample.Infrastructure.Base;
 
-[TestClass]
+[TestFixture]
 public class TestBase
 {
     protected IBrowserContext Context { get; private set; } = null!;
     protected IBrowser Browser { get; private set; } = null!;
     protected ILogger Logger { get; private set; } = null!;
     protected IPage Page { get; private set; } = null!;
+    protected IAPIRequestContext ApiContext { get; private set; } = null!;
+    protected ApiTestHelper ApiHelper { get; private set; } = null!;
     private IPlaywright _playwright = null!;
     protected ExtentTest TestReport { get; private set; } = null!;
     private DateTime _testStartTime;
     private TraceManager _traceManager = null!;
-    protected TestSettings Settings => ConfigurationLoader.Settings;
+    protected TestSettings Settings => ConfigurationLoader.GetSettings<TestSettings>();
 
-    public TestContext TestContext { get; set; } = null!;
-
-    [AssemblyInitialize]
-    public static async Task AssemblyInitialize(TestContext context)
+    [OneTimeSetUp]
+    public static async Task AssemblyInitialize()
     {
         await TestReportManager.InitializeReporting();
     }
 
-    [AssemblyCleanup]
+    [OneTimeTearDown]
     public static void AssemblyCleanup()
     {
         TestReportManager.FinalizeReporting();
     }
 
-    [TestInitialize]
+    private string GetProjectRoot()
+    {
+        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+    }
+
+    private string GetTestResultsPath()
+    {
+        return Path.Combine(GetProjectRoot(), "TestResults");
+    }
+
+    private string GetReportsPath()
+    {
+        return Path.Combine(GetTestResultsPath(), "Reports");
+    }
+
+    private string GetVideoPath(string fileName)
+    {
+        return Path.Combine(GetReportsPath(), "Videos", fileName);
+    }
+
+    private string GetTempVideoPath()
+    {
+        return Path.Combine(GetReportsPath(), "Videos", "temp");
+    }
+
+    [SetUp]
     public virtual async Task BaseTestInitialize()
     {
+        var testName = TestContext.CurrentContext.Test.Name;
         _testStartTime = DateTime.Now;
 
-        // Initialize Logger
-        if (Logger == null)
+        // Initialize logger
+        var loggerFactory = LoggerFactory.Create(builder =>
         {
-            var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.AddConsole();
-            });
-            Logger = loggerFactory.CreateLogger(GetType());
-        }
-
-        // Initialize Configuration
+            builder.AddConsole();
+            builder.SetMinimumLevel(LogLevel.Information);
+        });
+        Logger = loggerFactory.CreateLogger<TestBase>();
         ConfigurationLoader.Initialize(Logger);
+
+        // Initialize test reporting
+        TestReport = TestReportManager.CreateTest(testName);
+        TestMetricsManager.InitializeTest(testName);
 
         // Initialize Playwright
         _playwright = await Playwright.CreateAsync();
-        Browser = await _playwright.Chromium.LaunchAsync(new()
+
+        // Configure browser options
+        var launchOptions = new BrowserTypeLaunchOptions
         {
             Headless = Settings.Browser.Headless,
             SlowMo = Settings.Browser.SlowMo
-        });
+        };
 
-        // Create test results directory structure
-        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        var testResultsRoot = Path.Combine(projectRoot, "TestResults");
-        var reportsDir = Path.Combine(testResultsRoot, "Reports");
-        var videosDir = Path.Combine(reportsDir, "Videos");
-        var logsDir = Path.Combine(reportsDir, "Logs");
-        var tracesDir = Path.Combine(reportsDir, "Traces");
+        // Launch browser
+        Browser = await _playwright[Settings.Browser.Type].LaunchAsync(launchOptions);
 
-        Directory.CreateDirectory(videosDir);
-        Directory.CreateDirectory(logsDir);
-        Directory.CreateDirectory(tracesDir);
-
-        // Initialize Browser Context with video recording
-        Context = await Browser.NewContextAsync(new()
+        // Create context with tracing enabled
+        var contextOptions = new BrowserNewContextOptions
         {
             ViewportSize = new ViewportSize
             {
                 Width = Settings.Browser.Viewport.Width,
                 Height = Settings.Browser.Viewport.Height
-            },
-            RecordVideoDir = videosDir,
-            RecordVideoSize = new RecordVideoSize
-            {
-                Width = Settings.Browser.Viewport.Width,
-                Height = Settings.Browser.Viewport.Height
             }
-        });
-
-        // Initialize trace manager with updated trace directory
-        var traceSettings = new Infrastructure.Tracing.TraceSettings
-        {
-            Enabled = Settings.Trace.Enabled,
-            Directory = tracesDir,
-            Mode = Enum.Parse<Infrastructure.Tracing.TracingMode>(Settings.Trace.Mode),
-            Screenshots = Settings.Trace.Screenshots,
-            Snapshots = Settings.Trace.Snapshots,
-            Sources = Settings.Trace.Sources
         };
-        _traceManager = new TraceManager(Context, Logger, traceSettings, TestContext);
+
+        // Configure video recording if enabled
+        if (Settings.Reporting.Video.Enabled)
+        {
+            var tempVideoDir = GetTempVideoPath();
+            Directory.CreateDirectory(tempVideoDir);
+
+            contextOptions.RecordVideoDir = tempVideoDir;
+            contextOptions.RecordVideoSize = new RecordVideoSize
+            {
+                Width = Settings.Reporting.Video.Size.Width,
+                Height = Settings.Reporting.Video.Size.Height
+            };
+        }
+
+        Context = await Browser.NewContextAsync(contextOptions);
+
+        // Initialize trace manager
+        _traceManager = new TraceManager(
+            Context,
+            Logger,
+            Settings.Reporting.Trace,
+            Settings.Reporting.BaseDirectory,
+            TestContext.CurrentContext
+        );
         await _traceManager.StartTracingAsync();
 
-        // Create a new page for the test
+        // Create new page
         Page = await Context.NewPageAsync();
 
-        // Initialize Test Report
-        var testName = TestContext.TestName;
-        TestReport = TestReportManager.CreateTest(testName);
-        TestMetricsManager.InitializeTest(testName);
+        // Initialize API context if needed
+        if (!string.IsNullOrEmpty(Settings.Environment.ApiBaseUrl))
+        {
+            ApiContext = await _playwright.APIRequest.NewContextAsync(new()
+            {
+                BaseURL = Settings.Environment.ApiBaseUrl,
+                IgnoreHTTPSErrors = true
+            });
 
-        LogInfo($"Test initialized: {testName}");
+            ApiHelper = new ApiTestHelper(Logger, Settings, ApiContext);
+        }
     }
 
-    [TestCleanup]
+    [TearDown]
     public virtual async Task BaseTestCleanup()
     {
-        var testFailed = TestContext.CurrentTestOutcome != UnitTestOutcome.Passed;
-        var duration = DateTime.Now - _testStartTime;
+        var testFailed = TestContext.CurrentContext.Result.Outcome.Status == TestStatus.Failed;
+        var testName = TestContext.CurrentContext.Test.Name;
 
         try
         {
+            // Clean up API resources first
+            if (ApiHelper != null)
+            {
+                try
+                {
+                    LogInfo("Cleaning up API resources...");
+                    await ApiHelper.CleanupResourcesAsync();
+                }
+                catch (Exception ex)
+                {
+                    LogError($"Error during API resource cleanup: {ex.Message}", ex);
+                }
+            }
+
             // Record test result
             TestMetricsManager.RecordTestResult(
-                TestContext.TestName,
-                duration,
+                TestContext.CurrentContext.Test.Name,
+                DateTime.Now - _testStartTime,
                 !testFailed,
-                testFailed ? TestReport?.Status.ToString() : "",
-                GetTestCategory()
+                testFailed ? TestContext.CurrentContext.Result.Message : "",
+                TestContext.CurrentContext.Test.Properties["Category"]?.Cast<string>().FirstOrDefault() ?? ""
             );
 
-            LogInfo($"Test completed with status: {(testFailed ? "Failed" : "Passed")}");
-
-            // Create test results directory structure
-            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-            var testResultsRoot = Path.Combine(projectRoot, "TestResults");
-            var reportsDir = Path.Combine(testResultsRoot, "Reports");
-            var logsDir = Path.Combine(reportsDir, "Logs");
-            Directory.CreateDirectory(logsDir);
-
-            // Start HTML report
-            TestReport?.Log(Status.Info, AttachmentHelper.GetReportStyles());
-            TestReport?.Log(Status.Info, @"<div class='test-report'>");
-
-            // Add test header
-            TestReport?.Log(Status.Info, $@"
-                <div class='test-header'>
-                    <h1 class='test-title'>{TestContext.TestName}</h1>
-                    <span class='test-status {(testFailed ? "status-failed" : "status-passed")}'>
-                        {(testFailed ? "Failed" : "Passed")}
-                    </span>
-                    <div class='test-info'>
-                        <div class='info-item'>
-                            <span class='info-label'>Duration</span>
-                            <span class='info-value'>{duration.TotalSeconds:F2} seconds</span>
-                        </div>
-                        <div class='info-item'>
-                            <span class='info-label'>Category</span>
-                            <span class='info-value'>{GetTestCategory()}</span>
-                        </div>
-                        <div class='info-item'>
-                            <span class='info-label'>Start Time</span>
-                            <span class='info-value'>{_testStartTime:yyyy-MM-dd HH:mm:ss}</span>
-                        </div>
-                    </div>
-                </div>");
-
-            // Add test artifacts section
-            TestReport?.Log(Status.Info, @"<div class='artifacts-section'>
-                <h2>Test Artifacts</h2>
-                <div class='artifacts-grid'>");
-
-            // Handle video recording
             if (Page != null)
             {
-                var video = Page.Video;
-                if (video != null)
+                try
                 {
-                    var videoPath = await video.PathAsync();
-                    if (!string.IsNullOrEmpty(videoPath))
+                    // Save trace
+                    var tracePath = await _traceManager.StopTracingAsync(testFailed);
+                    if (!string.IsNullOrEmpty(tracePath))
                     {
-                        var fileName = $"{TestContext.TestName}_{DateTime.Now:yyyyMMdd_HHmmss}.webm";
-                        var destinationPath = Path.Combine(Path.GetDirectoryName(videoPath)!, fileName);
-                        await video.SaveAsAsync(destinationPath);
+                        TestReportManager.AddTestTrace(testName, tracePath);
+                    }
 
-                        // Make path relative to the HTML report
-                        var relativePath = Path.Combine("Videos", fileName).Replace('\\', '/');
-                        TestReport?.Log(Status.Info, AttachmentHelper.CreateVideoAttachment(relativePath));
+                    // Save video
+                    if (Context != null && Settings.Reporting.Video.Enabled)
+                    {
+                        try
+                        {
+                            var video = Page.Video;
+                            if (video != null)
+                            {
+                                var videoPath = await video.PathAsync();
+                                if (!string.IsNullOrEmpty(videoPath))
+                                {
+                                    // Wait for video to be saved
+                                    await Page.CloseAsync();
+                                    await Context.CloseAsync();
+
+                                    // Create final video path
+                                    var videoFileName = $"{testName}_{DateTime.Now:yyyyMMdd_HHmmss}.webm";
+                                    var destinationPath = GetVideoPath(videoFileName);
+                                    Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+
+                                    // Ensure source video exists and copy it
+                                    if (File.Exists(videoPath))
+                                    {
+                                        try
+                                        {
+                                            // First try to move the file
+                                            File.Move(videoPath, destinationPath, true);
+                                        }
+                                        catch
+                                        {
+                                            // If move fails, try to copy and then delete
+                                            File.Copy(videoPath, destinationPath, true);
+                                            try
+                                            {
+                                                File.Delete(videoPath);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                LogWarning($"Could not delete temporary video file: {ex.Message}");
+                                            }
+                                        }
+
+                                        TestReportManager.AddTestVideo(testName, destinationPath);
+                                    }
+                                    else
+                                    {
+                                        LogWarning($"Video file not found at path: {videoPath}");
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogError($"Error handling test video: {ex.Message}", ex);
+                        }
+                    }
+
+                    // Take screenshot on failure
+                    if (testFailed)
+                    {
+                        var screenshotFileName = $"{testName}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+                        var screenshotPath = Path.Combine(GetReportsPath(), "Screenshots", screenshotFileName);
+                        Directory.CreateDirectory(Path.GetDirectoryName(screenshotPath)!);
+                        await Page.ScreenshotAsync(new() { Path = screenshotPath, FullPage = true });
+                        TestReportManager.AddTestScreenshot(testName, screenshotPath, "Failure Screenshot");
+
+                        // Add error details to report
+                        var errorMessage = TestContext.CurrentContext.Result.Message;
+                        var stackTrace = TestContext.CurrentContext.Result.StackTrace;
+                        if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            TestReport?.Error($"Test Failed: {errorMessage}");
+                            if (!string.IsNullOrEmpty(stackTrace))
+                            {
+                                TestReport?.Error($"Stack Trace: {stackTrace}");
+                            }
+                        }
                     }
                 }
-            }
-
-            // Handle trace recording
-            if (_traceManager != null)
-            {
-                var tracePath = await _traceManager.StopTracingAsync(testFailed);
-                if (!string.IsNullOrEmpty(tracePath))
+                catch (Exception ex)
                 {
-                    // Make path relative to the HTML report
-                    var fileName = Path.GetFileName(tracePath);
-                    var relativePath = Path.Combine("Traces", fileName).Replace('\\', '/');
-                    TestReport?.Log(Status.Info, AttachmentHelper.CreateTraceAttachment(relativePath));
+                    LogError($"Error during artifact collection: {ex.Message}", ex);
                 }
             }
 
-            // Save and attach test logs
-            var testOutput = GetTestLogContent();
-            var logFileName = $"{TestContext.TestName}_{DateTime.Now:yyyyMMdd_HHmmss}.log";
-            var logPath = Path.Combine(logsDir, logFileName);
-            await File.WriteAllTextAsync(logPath, testOutput);
-
-            // Make path relative to the HTML report
-            var relativeLogPath = Path.Combine("Logs", logFileName).Replace('\\', '/');
-            TestReport?.Log(Status.Info, AttachmentHelper.CreateLogAttachment(relativeLogPath, testOutput));
-
-            TestReport?.Log(Status.Info, "</div></div>"); // Close artifacts section
-
-            // Add error details if test failed
-            if (testFailed && TestContext.CurrentTestOutcome == UnitTestOutcome.Failed)
-            {
-                var exception = TestContext.Properties["$Exception"] as Exception;
-                if (exception != null)
-                {
-                    TestReport?.Log(Status.Info, $@"
-                        <div class='error-section'>
-                            <h2 class='error-title'>Error Details</h2>
-                            <div class='error-message'>
-                                <b>Message:</b> {HttpUtility.HtmlEncode(exception.Message)}
-                            </div>
-                            <div class='stack-trace'>
-                                <b>Stack Trace:</b>
-                                <pre>{HttpUtility.HtmlEncode(exception.StackTrace)}</pre>
-                            </div>
-                        </div>");
-                }
-            }
-
-            TestReport?.Log(Status.Info, "</div>"); // Close test-report div
-
+            // Update final test status in report
             if (testFailed)
             {
-                TestReport?.Fail("Test failed");
+                TestReport?.Fail($"Test failed: {TestContext.CurrentContext.Result.Message}");
             }
             else
             {
-                TestReport?.Pass("Test passed");
+                TestReport?.Pass("Test passed successfully");
             }
+
+            LogInfo($"Test completed with status: {(testFailed ? "Failed" : "Passed")}");
         }
         catch (Exception ex)
         {
-            LogError("Error during test cleanup", ex);
+            LogError($"Error during test cleanup: {ex.Message}", ex);
+            throw;
         }
         finally
         {
-            try
+            // Dispose of resources in reverse order of creation
+            if (ApiContext != null)
             {
-                // Cleanup resources in the correct order
-                if (Page != null)
-                {
-                    await Page.CloseAsync();
-                    Page = null!;
-                }
-
-                if (Context != null)
-                {
-                    await Context.CloseAsync();
-                    await Context.DisposeAsync();
-                    Context = null!;
-                }
-
-                if (Browser != null)
-                {
-                    await Browser.CloseAsync();
-                    await Browser.DisposeAsync();
-                    Browser = null!;
-                }
-
-                if (_playwright != null)
-                {
-                    _playwright.Dispose();
-                    _playwright = null!;
-                }
+                await ApiContext.DisposeAsync();
+                ApiContext = null;
             }
-            catch (Exception ex)
+            if (Context != null)
             {
-                LogError("Error during resource cleanup", ex);
+                await Context.CloseAsync();
+                Context = null;
+            }
+            if (Browser != null)
+            {
+                await Browser.CloseAsync();
+                Browser = null;
+            }
+            if (_playwright != null)
+            {
+                _playwright.Dispose();
+                _playwright = null;
             }
         }
-    }
-
-    private string GetTestLogContent()
-    {
-        var output = new StringBuilder();
-        output.AppendLine($"Test Name: {TestContext.TestName}");
-        output.AppendLine($"Test Status: {TestContext.CurrentTestOutcome}");
-        output.AppendLine($"Test Start Time: {_testStartTime:yyyy-MM-dd HH:mm:ss}");
-        output.AppendLine($"Test Duration: {(DateTime.Now - _testStartTime).TotalSeconds:F2} seconds");
-        output.AppendLine($"Test Class: {TestContext.FullyQualifiedTestClassName}");
-        output.AppendLine($"Test Category: {GetTestCategory()}");
-        output.AppendLine("\nTest Log Messages:");
-
-        // Get all log messages from TestContext
-        var testOutput = TestContext.CurrentTestOutcome == UnitTestOutcome.Failed
-            ? TestContext.FullyQualifiedTestClassName + "." + TestContext.TestName + " Failed"
-            : TestContext.FullyQualifiedTestClassName + "." + TestContext.TestName + " Passed";
-        output.AppendLine(testOutput);
-
-        if (TestContext.CurrentTestOutcome == UnitTestOutcome.Failed)
-        {
-            var exception = TestContext.Properties["$Exception"] as Exception;
-            if (exception != null)
-            {
-                output.AppendLine("\nError Details:");
-                output.AppendLine($"Message: {exception.Message}");
-                output.AppendLine($"Stack Trace:\n{exception.StackTrace}");
-            }
-        }
-
-        return output.ToString();
     }
 
     protected void LogInfo(string message)
     {
         Logger.LogInformation(message);
         TestContext.WriteLine($"[INFO] {message}");
-        var formattedMessage = $"<div class='log-message info'>{message}</div>";
-        TestReport?.Log(Status.Info, formattedMessage);
+        TestReport?.Info(message);
     }
 
     protected void LogWarning(string message)
     {
         Logger.LogWarning(message);
         TestContext.WriteLine($"[WARNING] {message}");
-        var formattedMessage = $"<div class='log-message warning'>⚠️ {message}</div>";
-        TestReport?.Log(Status.Warning, formattedMessage);
+        TestReport?.Warning(message);
     }
 
     protected void LogError(string message, Exception? ex = null)
     {
         Logger.LogError(ex, message);
         TestContext.WriteLine($"[ERROR] {message}");
+        TestReport?.Error(message);
         if (ex != null)
         {
             TestContext.WriteLine($"[ERROR] Exception: {ex.Message}");
             TestContext.WriteLine($"[ERROR] Stack Trace: {ex.StackTrace}");
+            TestReport?.Error(ex.ToString());
         }
-
-        var formattedMessage = new StringBuilder();
-        formattedMessage.AppendLine($"<div class='log-message error'>");
-        formattedMessage.AppendLine($"<div class='error-icon'>❌</div>");
-        formattedMessage.AppendLine($"<div class='error-content'>");
-        formattedMessage.AppendLine($"<div class='error-message'>{message}</div>");
-
-        if (ex != null)
-        {
-            formattedMessage.AppendLine("<div class='error-details'>");
-            formattedMessage.AppendLine($"<div class='exception-message'><b>Error:</b> {System.Web.HttpUtility.HtmlEncode(ex.Message)}</div>");
-            formattedMessage.AppendLine("<div class='stack-trace'>");
-            formattedMessage.AppendLine("<b>Stack Trace:</b>");
-            formattedMessage.AppendLine($"<pre>{System.Web.HttpUtility.HtmlEncode(ex.StackTrace)}</pre>");
-            formattedMessage.AppendLine("</div>");
-            formattedMessage.AppendLine("</div>");
-        }
-
-        formattedMessage.AppendLine("</div>");
-        formattedMessage.AppendLine("</div>");
-        TestReport?.Log(Status.Error, formattedMessage.ToString());
-    }
-
-    private string GetTestCategory()
-    {
-        var methodInfo = GetType().GetMethod(TestContext.TestName);
-        if (methodInfo == null) return "Unknown";
-
-        if (TestContext.TestName.Contains("API"))
-            return "API Tests";
-        if (TestContext.TestName.Contains("Navigation"))
-            return "Navigation Tests";
-        if (TestContext.TestName.Contains("Search"))
-            return "Search Tests";
-
-        return "UI Tests";
     }
 }

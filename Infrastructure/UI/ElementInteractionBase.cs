@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using ParkPlaceSample.Infrastructure.Config;
+using Microsoft.Extensions.Configuration;
 
 namespace ParkPlaceSample.Infrastructure.UI;
 
@@ -8,14 +8,14 @@ public abstract class ElementInteractionBase
 {
     protected readonly IPage Page;
     protected readonly ILogger Logger;
-    protected readonly TestSettings Settings;
+    protected readonly IConfiguration Configuration;
     protected readonly string BaseSelector;
 
-    protected ElementInteractionBase(IPage page, ILogger logger, TestSettings settings, string baseSelector)
+    protected ElementInteractionBase(IPage page, ILogger logger, IConfiguration configuration, string baseSelector)
     {
         Page = page;
         Logger = logger;
-        Settings = settings;
+        Configuration = configuration;
         BaseSelector = baseSelector;
     }
 

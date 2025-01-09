@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using NUnit.Framework;
+using NUnit.Framework.Interfaces;
 
 namespace ParkPlaceSample.Infrastructure.Logging;
 
@@ -31,13 +33,13 @@ public class TestContextLogger : ILogger
         var message = formatter(state, exception);
         var formattedMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{logLevel}] [{_categoryName}] {message}";
 
-        _testContext.WriteLine(formattedMessage);
+        TestContext.WriteLine(formattedMessage);
         Console.WriteLine(formattedMessage);
 
         if (exception != null)
         {
             var exceptionMessage = $"Exception: {exception.Message}\nStackTrace: {exception.StackTrace}";
-            _testContext.WriteLine(exceptionMessage);
+            TestContext.WriteLine(exceptionMessage);
             Console.WriteLine(exceptionMessage);
         }
     }

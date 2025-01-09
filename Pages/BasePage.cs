@@ -1,25 +1,27 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using ParkPlaceSample.Infrastructure.Config;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Playwright.NUnit;
+using NUnit.Framework;
 
 namespace ParkPlaceSample.Pages;
 
-public abstract class BasePage
+public abstract class BasePage : PageTest
 {
-    protected readonly IPage Page;
+    protected new readonly IPage Page;
     protected readonly ILogger Logger;
-    protected readonly TestSettings Settings;
+    protected readonly IConfiguration Configuration;
 
-    protected BasePage(IPage page, ILogger logger, TestSettings settings)
+    protected BasePage(IPage page, ILogger logger, IConfiguration configuration)
     {
         Page = page;
         Logger = logger;
-        Settings = settings;
+        Configuration = configuration;
     }
 
     protected string BuildUrl(string path)
     {
-        var baseUrl = Settings.Environment.BaseUrl.TrimEnd('/');
+        var baseUrl = Configuration["Environment:BaseUrl"]?.TrimEnd('/');
         path = path.TrimStart('/');
         return $"{baseUrl}/{path}";
     }

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using ParkPlaceSample.Infrastructure.Config;
+using Microsoft.Extensions.Configuration;
 
 namespace ParkPlaceSample.Pages.Components;
 
@@ -8,12 +8,12 @@ public abstract class BaseComponent
 {
     protected readonly IPage Page;
     protected readonly ILogger Logger;
-    protected readonly TestSettings Settings;
+    protected readonly IConfiguration Configuration;
 
-    protected BaseComponent(IPage page, ILogger logger, TestSettings settings)
+    protected BaseComponent(IPage page, ILogger logger, IConfiguration configuration)
     {
         Page = page;
         Logger = logger;
-        Settings = settings;
+        Configuration = configuration;
     }
 }
