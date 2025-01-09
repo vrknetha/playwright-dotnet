@@ -1,81 +1,70 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using Microsoft.Extensions.Configuration;
 
 namespace ParkPlaceSample.Pages;
 
 public class HomePage : BasePage
 {
-    private readonly IPage _page;
-    private readonly ILogger _logger;
-    private readonly IConfiguration _configuration;
-
     // Locators
-    private ILocator GetStartedButton => _page.GetByRole(AriaRole.Link, new() { Name = "Get Started" });
-    private ILocator SearchButton => _page.GetByRole(AriaRole.Button, new() { Name = "Search" });
-    private ILocator SearchInput => _page.GetByPlaceholder("Search");
+    private ILocator GetStartedButton => Page.GetByRole(AriaRole.Link, new() { Name = "Get Started" });
+    private ILocator SearchButton => Page.GetByRole(AriaRole.Button, new() { Name = "Search" });
+    private ILocator SearchInput => Page.GetByPlaceholder("Search");
 
-    public HomePage(IPage page, ILogger logger, IConfiguration configuration)
-        : base(page, logger, configuration)
-    {
-        _page = page;
-        _logger = logger;
-        _configuration = configuration;
-    }
+    public HomePage(IPage page) : base(page) { }
 
     public async Task NavigateAsync()
     {
-        _logger.LogInformation("Navigating to homepage");
-        await _page.GotoAsync(_configuration["Environment:BaseUrl"]);
-        await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        _logger.LogInformation("Homepage loaded successfully");
+        Logger.LogInformation("Navigating to homepage");
+        await Page.GotoAsync(Settings.Environment.BaseUrl);
+        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        Logger.LogInformation("Homepage loaded successfully");
     }
 
     public async Task<string> GetTitleAsync()
     {
-        var title = await _page.TitleAsync();
-        _logger.LogInformation("Retrieved page title: {Title}", title);
+        var title = await Page.TitleAsync();
+        Logger.LogInformation("Retrieved page title: {Title}", title);
         return title;
     }
 
     public async Task ClickGetStartedAsync()
     {
-        _logger.LogInformation("Clicking 'Get Started' button");
+        Logger.LogInformation("Clicking 'Get Started' button");
         await GetStartedButton.WaitForAsync();
         await GetStartedButton.ClickAsync();
-        await _page.WaitForURLAsync("**/docs/intro");
-        _logger.LogInformation("Navigated to documentation page");
+        await Page.WaitForURLAsync("**/docs/intro");
+        Logger.LogInformation("Navigated to documentation page");
     }
 
     public async Task OpenSearchAsync()
     {
-        _logger.LogInformation("Opening search dialog");
-        await _page.Keyboard.PressAsync("Control+k");
+        Logger.LogInformation("Opening search dialog");
+        await Page.Keyboard.PressAsync("Control+k");
         await SearchInput.WaitForAsync();
-        _logger.LogInformation("Search dialog opened");
+        Logger.LogInformation("Search dialog opened");
     }
 
     public async Task SearchAsync(string query)
     {
-        _logger.LogInformation("Performing search for: {Query}", query);
+        Logger.LogInformation("Performing search for: {Query}", query);
         await OpenSearchAsync();
         await SearchInput.FillAsync(query);
-        await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        _logger.LogInformation("Search completed");
+        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        Logger.LogInformation("Search completed");
     }
 
     public async Task<int> GetSearchResultsCountAsync()
     {
-        var searchResults = _page.Locator("[class*='searchResult']");
+        var searchResults = Page.Locator("[class*='searchResult']");
         var count = await searchResults.CountAsync();
-        _logger.LogInformation("Found {Count} search results", count);
+        Logger.LogInformation("Found {Count} search results", count);
         return count;
     }
 
     public async Task TakeScreenshotAsync(string path)
     {
-        _logger.LogInformation("Taking screenshot: {Path}", path);
-        await _page.ScreenshotAsync(new() { Path = path });
-        _logger.LogInformation("Screenshot saved successfully");
+        Logger.LogInformation("Taking screenshot: {Path}", path);
+        await Page.ScreenshotAsync(new() { Path = path });
+        Logger.LogInformation("Screenshot saved successfully");
     }
 }

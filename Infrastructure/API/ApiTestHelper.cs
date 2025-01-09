@@ -5,6 +5,7 @@ using Microsoft.Playwright;
 using NUnit.Framework;
 using ParkPlaceSample.Infrastructure.Config;
 using ParkPlaceSample.Infrastructure.Config.Models;
+using ParkPlaceSample.Infrastructure.Logging;
 using ParkPlaceSample.Infrastructure.TestData.Models;
 
 namespace ParkPlaceSample.Infrastructure.API;
@@ -17,11 +18,11 @@ public class ApiTestHelper
     private readonly List<string> _createdResources;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public ApiTestHelper(ILogger logger, TestSettings settings, IAPIRequestContext apiContext)
+    public ApiTestHelper(IAPIRequestContext apiContext)
     {
-        _logger = logger;
-        _settings = settings;
         _apiContext = apiContext;
+        _logger = LoggerManager.Current;
+        _settings = ConfigurationLoader.GetSettings<TestSettings>();
         _createdResources = new List<string>();
         _jsonOptions = new JsonSerializerOptions
         {

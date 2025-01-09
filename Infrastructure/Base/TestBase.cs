@@ -6,6 +6,8 @@ using ParkPlaceSample.Infrastructure.Config;
 using ParkPlaceSample.Infrastructure.Config.Models;
 using ParkPlaceSample.Infrastructure.Tracing;
 using ParkPlaceSample.Infrastructure.API;
+using ParkPlaceSample.Infrastructure.Logging;
+using ParkPlaceSample.Infrastructure.Auth;
 using System.Text;
 using System.Web;
 using NUnit.Framework;
@@ -16,30 +18,42 @@ using Microsoft.Extensions.Configuration.Binder;
 namespace ParkPlaceSample.Infrastructure.Base;
 
 [TestFixture]
-public class TestBase
+public class TestBase : IAsyncDisposable
 {
     protected IBrowserContext Context { get; private set; } = null!;
     protected IBrowser Browser { get; private set; } = null!;
-    protected ILogger Logger { get; private set; } = null!;
+    protected ILogger Logger { get; }
     protected IPage Page { get; private set; } = null!;
-    protected IAPIRequestContext ApiContext { get; private set; } = null!;
-    protected ApiTestHelper ApiHelper { get; private set; } = null!;
     private IPlaywright _playwright = null!;
     protected ExtentTest TestReport { get; private set; } = null!;
     private DateTime _testStartTime;
     private TraceManager _traceManager = null!;
-    protected TestSettings Settings => ConfigurationLoader.GetSettings<TestSettings>();
+    protected TestSettings Settings { get; }
+    protected AuthHelper AuthHelper { get; }
+    protected string? AuthStateToUse { get; set; }
 
-    [OneTimeSetUp]
-    public static async Task AssemblyInitialize()
+    public TestBase()
     {
-        await TestReportManager.InitializeReporting();
+        // Initialize logger
+        var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.AddConsole();
+            builder.SetMinimumLevel(LogLevel.Information);
+        });
+        Logger = loggerFactory.CreateLogger<TestBase>();
+        LoggerManager.SetLogger(Logger);
+
+        // Initialize settings
+        ConfigurationLoader.Initialize(Logger);
+        Settings = ConfigurationLoader.GetSettings<TestSettings>();
+
+        // Initialize AuthHelper
+        AuthHelper = new AuthHelper();
     }
 
-    [OneTimeTearDown]
-    public static void AssemblyCleanup()
+    protected string GetAuthStatePath()
     {
-        TestReportManager.FinalizeReporting();
+        return Path.Combine(GetReportsPath(), ".auth");
     }
 
     private string GetProjectRoot()
@@ -67,20 +81,23 @@ public class TestBase
         return Path.Combine(GetReportsPath(), "Videos", "temp");
     }
 
+    [OneTimeSetUp]
+    public static async Task AssemblyInitialize()
+    {
+        await TestReportManager.InitializeReporting();
+    }
+
+    [OneTimeTearDown]
+    public static void AssemblyCleanup()
+    {
+        TestReportManager.FinalizeReporting();
+    }
+
     [SetUp]
     public virtual async Task BaseTestInitialize()
     {
         var testName = TestContext.CurrentContext.Test.Name;
         _testStartTime = DateTime.Now;
-
-        // Initialize logger
-        var loggerFactory = LoggerFactory.Create(builder =>
-        {
-            builder.AddConsole();
-            builder.SetMinimumLevel(LogLevel.Information);
-        });
-        Logger = loggerFactory.CreateLogger<TestBase>();
-        ConfigurationLoader.Initialize(Logger);
 
         // Initialize test reporting
         TestReport = TestReportManager.CreateTest(testName);
@@ -123,6 +140,28 @@ public class TestBase
             };
         }
 
+        // Apply auth state if specified
+        if (!string.IsNullOrEmpty(AuthStateToUse))
+        {
+            try
+            {
+                var authStatePath = Path.Combine(GetAuthStatePath(), AuthStateToUse);
+                if (await AuthHelper.VerifyAuthStateAsync(authStatePath))
+                {
+                    LogInfo($"Using authentication state: {AuthStateToUse}");
+                    contextOptions.StorageStatePath = authStatePath;
+                }
+                else
+                {
+                    LogWarning($"Authentication state is invalid or expired: {AuthStateToUse}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError($"Failed to apply authentication state: {AuthStateToUse}", ex);
+            }
+        }
+
         Context = await Browser.NewContextAsync(contextOptions);
 
         // Initialize trace manager
@@ -141,13 +180,7 @@ public class TestBase
         // Initialize API context if needed
         if (!string.IsNullOrEmpty(Settings.Environment.ApiBaseUrl))
         {
-            ApiContext = await _playwright.APIRequest.NewContextAsync(new()
-            {
-                BaseURL = Settings.Environment.ApiBaseUrl,
-                IgnoreHTTPSErrors = true
-            });
-
-            ApiHelper = new ApiTestHelper(Logger, Settings, ApiContext);
+            await ApiContextManager.InitializeAsync(_playwright, Settings);
         }
     }
 
@@ -159,13 +192,13 @@ public class TestBase
 
         try
         {
-            // Clean up API resources first
-            if (ApiHelper != null)
+            // Clean up API context if needed
+            if (!string.IsNullOrEmpty(Settings.Environment.ApiBaseUrl))
             {
                 try
                 {
                     LogInfo("Cleaning up API resources...");
-                    await ApiHelper.CleanupResourcesAsync();
+                    await ApiContextManager.DisposeAsync();
                 }
                 catch (Exception ex)
                 {
@@ -298,27 +331,28 @@ public class TestBase
         finally
         {
             // Dispose of resources in reverse order of creation
-            if (ApiContext != null)
-            {
-                await ApiContext.DisposeAsync();
-                ApiContext = null;
-            }
+            await ApiContextManager.DisposeAsync();
             if (Context != null)
             {
                 await Context.CloseAsync();
-                Context = null;
+                Context = null!;
             }
             if (Browser != null)
             {
                 await Browser.CloseAsync();
-                Browser = null;
+                Browser = null!;
             }
             if (_playwright != null)
             {
                 _playwright.Dispose();
-                _playwright = null;
+                _playwright = null!;
             }
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await AuthHelper.DisposeAsync();
     }
 
     protected void LogInfo(string message)

@@ -1,7 +1,10 @@
 using System.Globalization;
 using Bogus;
 using Microsoft.Extensions.Logging;
+using NUnit.Framework;
+using ParkPlaceSample.Infrastructure.Config;
 using ParkPlaceSample.Infrastructure.Config.Models;
+using ParkPlaceSample.Infrastructure.Logging;
 using ParkPlaceSample.Infrastructure.TestData.Models;
 
 namespace ParkPlaceSample.Infrastructure.TestData;
@@ -18,12 +21,10 @@ public class TestDataGenerator
     /// <summary>
     /// Initializes a new instance of the TestDataGenerator class.
     /// </summary>
-    /// <param name="logger">The logger instance for logging operations.</param>
-    /// <param name="settings">The test settings containing configuration values.</param>
-    public TestDataGenerator(ILogger logger, TestSettings settings)
+    public TestDataGenerator()
     {
-        _logger = logger;
-        _settings = settings;
+        _logger = LoggerManager.Current;
+        _settings = ConfigurationLoader.GetSettings<TestSettings>();
 
         // Ensure we have test data settings
         if (_settings.TestData == null)
