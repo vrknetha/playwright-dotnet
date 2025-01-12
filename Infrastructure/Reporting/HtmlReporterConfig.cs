@@ -2,7 +2,7 @@ using AventStack.ExtentReports.Reporter;
 using AventStack.ExtentReports.Reporter.Configuration;
 using NUnit.Framework;
 
-namespace ParkPlaceSample.Infrastructure.Reporting;
+namespace PlaywrightDemo.Infrastructure.Reporting;
 
 public static class HtmlReporterConfig
 {

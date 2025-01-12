@@ -1,13 +1,13 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using ParkPlaceSample.Infrastructure.Config.Models;
-using ParkPlaceSample.Infrastructure.Config;
-using ParkPlaceSample.Infrastructure.Logging;
+using PlaywrightDemo.Infrastructure.Config.Models;
+using PlaywrightDemo.Infrastructure.Config;
+using PlaywrightDemo.Infrastructure.Logging;
 using NUnit.Framework;
 using System.Runtime.CompilerServices;
 
-namespace ParkPlaceSample.Infrastructure.Auth;
+namespace PlaywrightDemo.Infrastructure.Auth;
 
 public class AuthHelper
 {

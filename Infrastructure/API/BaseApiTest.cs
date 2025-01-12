@@ -2,12 +2,12 @@ using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
-using ParkPlaceSample.Infrastructure.Config;
-using ParkPlaceSample.Infrastructure.Logging;
+using PlaywrightDemo.Infrastructure.Config;
+using PlaywrightDemo.Infrastructure.Logging;
 using Microsoft.Playwright;
-using ParkPlaceSample.Infrastructure.Config.Models;
+using PlaywrightDemo.Infrastructure.Config.Models;
 
-namespace ParkPlaceSample.Infrastructure.API;
+namespace PlaywrightDemo.Infrastructure.API;
 
 /// <summary>
 /// Base class for API tests providing common functionality and setup.

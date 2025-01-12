@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 
-namespace ParkPlaceSample.Pages;
+namespace PlaywrightDemo.Pages;
 
 public class DocsPage : BasePage
 {

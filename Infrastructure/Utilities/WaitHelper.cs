@@ -1,7 +1,7 @@
 using Microsoft.Playwright;
-using ParkPlaceSample.Config;
+using PlaywrightDemo.Config;
 
-namespace ParkPlaceSample.Infrastructure.Utilities;
+namespace PlaywrightDemo.Infrastructure.Utilities;
 
 public static class WaitHelper
 {

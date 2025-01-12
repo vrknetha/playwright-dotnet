@@ -3,7 +3,7 @@ using System.Web;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 
-namespace ParkPlaceSample.Infrastructure.Reporting;
+namespace PlaywrightDemo.Infrastructure.Reporting;
 
 public class TestExecutionMetric
 {

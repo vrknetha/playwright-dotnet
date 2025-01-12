@@ -1,13 +1,13 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using AventStack.ExtentReports;
-using ParkPlaceSample.Infrastructure.Reporting;
-using ParkPlaceSample.Infrastructure.Config;
-using ParkPlaceSample.Infrastructure.Config.Models;
-using ParkPlaceSample.Infrastructure.Tracing;
-using ParkPlaceSample.Infrastructure.API;
-using ParkPlaceSample.Infrastructure.Logging;
-using ParkPlaceSample.Infrastructure.Auth;
+using PlaywrightDemo.Infrastructure.Reporting;
+using PlaywrightDemo.Infrastructure.Config;
+using PlaywrightDemo.Infrastructure.Config.Models;
+using PlaywrightDemo.Infrastructure.Tracing;
+using PlaywrightDemo.Infrastructure.API;
+using PlaywrightDemo.Infrastructure.Logging;
+using PlaywrightDemo.Infrastructure.Auth;
 using System.Text;
 using System.Web;
 using NUnit.Framework;
@@ -15,7 +15,7 @@ using NUnit.Framework.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Binder;
 
-namespace ParkPlaceSample.Infrastructure.Base;
+namespace PlaywrightDemo.Infrastructure.Base;
 
 [TestFixture]
 public class TestBase : IAsyncDisposable
@@ -53,7 +53,9 @@ public class TestBase : IAsyncDisposable
 
     protected string GetAuthStatePath()
     {
-        return Path.Combine(GetReportsPath(), ".auth");
+        // Get the project root directory
+        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+        return Path.Combine(projectRoot, "playwright", ".auth");
     }
 
     private string GetProjectRoot()

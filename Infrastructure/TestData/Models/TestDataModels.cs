@@ -1,4 +1,4 @@
-namespace ParkPlaceSample.Infrastructure.TestData.Models;
+namespace PlaywrightDemo.Infrastructure.TestData.Models;
 
 public class UserData
 {

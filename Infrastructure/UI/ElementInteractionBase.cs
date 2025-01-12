@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using Microsoft.Extensions.Configuration;
 
-namespace ParkPlaceSample.Infrastructure.UI;
+namespace PlaywrightDemo.Infrastructure.UI;
 
 public abstract class ElementInteractionBase
 {

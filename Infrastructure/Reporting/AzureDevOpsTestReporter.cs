@@ -2,9 +2,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using ParkPlaceSample.Infrastructure.Config.Models;
+using PlaywrightDemo.Infrastructure.Config.Models;
 
-namespace ParkPlaceSample.Infrastructure.Reporting;
+namespace PlaywrightDemo.Infrastructure.Reporting;
 
 public class AzureDevOpsTestReporter
 {

@@ -1,4 +1,4 @@
-namespace ParkPlaceSample.Config;
+namespace PlaywrightDemo.Config;
 
 /// <summary>
 /// Represents retry configuration settings.

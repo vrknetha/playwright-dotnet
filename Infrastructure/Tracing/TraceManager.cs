@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using NUnit.Framework;
-using ParkPlaceSample.Infrastructure.Config.Models;
+using PlaywrightDemo.Infrastructure.Config.Models;
 
-namespace ParkPlaceSample.Infrastructure.Tracing;
+namespace PlaywrightDemo.Infrastructure.Tracing;
 
 public class TraceManager
 {

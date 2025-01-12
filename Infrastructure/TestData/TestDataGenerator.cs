@@ -2,12 +2,12 @@ using System.Globalization;
 using Bogus;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
-using ParkPlaceSample.Infrastructure.Config;
-using ParkPlaceSample.Infrastructure.Config.Models;
-using ParkPlaceSample.Infrastructure.Logging;
-using ParkPlaceSample.Infrastructure.TestData.Models;
+using PlaywrightDemo.Infrastructure.Config;
+using PlaywrightDemo.Infrastructure.Config.Models;
+using PlaywrightDemo.Infrastructure.Logging;
+using PlaywrightDemo.Infrastructure.TestData.Models;
 
-namespace ParkPlaceSample.Infrastructure.TestData;
+namespace PlaywrightDemo.Infrastructure.TestData;
 
 /// <summary>
 /// Provides methods for generating test data using the Bogus library.

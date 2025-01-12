@@ -2,7 +2,7 @@ using System.Web;
 using NUnit.Framework;
 using AventStack.ExtentReports;
 
-namespace ParkPlaceSample.Infrastructure.Reporting;
+namespace PlaywrightDemo.Infrastructure.Reporting;
 
 public static class AttachmentHelper
 {

@@ -1,108 +1,142 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using ParkPlaceSample.Infrastructure.Base;
-using ParkPlaceSample.Infrastructure.Reporting;
-using ParkPlaceSample.Infrastructure.API;
-using ParkPlaceSample.Pages;
-using ParkPlaceSample.Infrastructure.Config;
+using PlaywrightDemo.Infrastructure.Base;
+using PlaywrightDemo.Infrastructure.Reporting;
+using PlaywrightDemo.Infrastructure.API;
+using PlaywrightDemo.Pages;
+using PlaywrightDemo.Infrastructure.Config;
 using NUnit.Framework;
-
-namespace ParkPlaceSample.Tests;
+using Microsoft.Playwright.NUnit;
+namespace PlaywrightDemo.Tests;
 
 [TestFixture]
 [Category("UI")]
 public class SampleTest : TestBase
 {
-    private HomePage _homePage = null!;
-    private DocsPage _docsPage = null!;
-    private ApiTestHelper _apiHelper = null!;
+    private LoginPage _loginPage = null!;
 
     [SetUp]
     public override async Task BaseTestInitialize()
     {
+        AuthStateToUse = "AniketSelokar-CawTech_state.json";
         await base.BaseTestInitialize();
+        _loginPage = new LoginPage(Page);
 
-        _homePage = new HomePage(Page);
-        _docsPage = new DocsPage(Page);
-        _apiHelper = new ApiTestHelper(ApiContextManager.Current);
+        // Load session storage if it exists
     }
 
     [Test]
-    [Category("Smoke")]
-    public async Task SampleEndToEndTest()
+    [Category("Login")]
+    public async Task LoginTest()
     {
-        LogInfo("Starting end-to-end test - Initializing test execution");
-
-        // Navigate to homepage and click Get Started
-        await _homePage.NavigateAsync();
-        await _homePage.ClickGetStartedAsync();
-
-        // Verify the installation heading on docs page
-        var headingText = await _docsPage.GetInstallationHeadingTextAsync();
-        Assert.That(headingText, Is.EqualTo("Installation"));
+        var user = new User("AniketSelokar-CawTech", "Aniket@0464");
+        await _loginPage.LoginAsync(user);
+        // Add assertions to verify successful login
     }
 
     [Test]
-    [Category("Search")]
-    public async Task SearchFunctionalityTest()
+    [Category("Login")]
+    public async Task MultiUserLoginTest()
     {
-        LogInfo("Starting search functionality test");
+        var users = new[]
+        {
+            new User("Username", "Password"),
+        };
 
-        // Navigate to docs page and perform search
-        await _docsPage.NavigateAsync();
-        await _docsPage.SearchAsync("assertions");
-
-        // Verify results count
-        var resultsCount = await _docsPage.GetSearchResultsCountAsync();
-        LogInfo($"Found {resultsCount} search results for 'assertions'");
-        Assert.That(resultsCount, Is.GreaterThan(0), "Expected at least one search result for 'assertions'");
+        foreach (var user in users)
+        {
+            await _loginPage.LoginAsync(user);
+            // Add assertions or further actions as needed
+        }
     }
 
     [Test]
-    [Category("API")]
-    public async Task APIDocsNavigationTest()
+    [Category("SessionStorage")]
+    public async Task UseSessionStorageTest()
     {
-        LogInfo("Starting API documentation navigation test");
+        // Now you can navigate to a page that requires the user to be logged in
+        await _loginPage.NavitageToDashBoard(); // Example URL that requires login
 
-        // Navigate to API docs
-        await _docsPage.NavigateToApiDocsAsync();
-
-        // Verify page title
-        var title = await _docsPage.GetTitleAsync();
-        LogInfo($"Page title: {title}");
-        Assert.That(title, Does.Contain("Playwright"), "Page title should contain 'Playwright'");
-
-        // Take screenshot of API docs
-        var screenshotPath = Path.Combine(AppContext.BaseDirectory, "api-docs.png");
-        await _docsPage.TakeScreenshotAsync(screenshotPath);
-        TestReport?.Log(AventStack.ExtentReports.Status.Info, AttachmentHelper.CreateLogAttachment(screenshotPath, "API Documentation Screenshot"));
+        // Add assertions to verify that the user is logged in
+        await _loginPage.AssertLoginSuccessfulAsync();
     }
 
-    [Test]
-    [Category("Navigation")]
-    public async Task NavigationAndTitleVerificationTest()
-    {
-        LogInfo("Starting navigation and title verification test");
 
-        // Navigate to homepage and verify title
-        await _homePage.NavigateAsync();
-        var title = await _homePage.GetTitleAsync();
-        Assert.That(title, Does.Contain("Playwright"), "Homepage title should contain 'Playwright'");
-
-        // Navigate to docs and verify title
-        await _docsPage.NavigateAsync();
-        var docsTitle = await _docsPage.GetTitleAsync();
-        Assert.That(docsTitle, Does.Contain("Installation"), "Documentation title should contain 'Installation'");
-    }
-
-    [Test]
-    [Category("API")]
-    public async Task ApiHealthCheckTest()
-    {
-        LogInfo("Starting API health check test");
-
-        var response = await _apiHelper.GetAsync<object>("/");
-        Assert.That(response, Is.Not.Null, "Health check response should not be null");
-        LogInfo("Successfully received response from the website");
-    }
 }
+
+
+// [TestFixture]
+// [Category("UI")]
+// public class GitHubTests : PageTest
+// {
+//     [SetUp]
+//     public async Task SetupAsync()
+//     {
+//         // No need to create a new Playwright instance here
+//         // _playwright = await Playwright.CreateAsync(); // Remove this line
+//     }
+
+//     [TearDown]
+//     public async Task TeardownAsync()
+//     {
+//         // No need to dispose of Playwright here
+//         // await _playwright?.Dispose(); // Remove this line
+//     }
+
+//     [Test]
+//     public async Task LoginAndStoreSessionAsync()
+//     {
+//         // Create a new browser instance
+//         var browser = await Playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+//         {
+//             Headless = false // Set to false if you want to see the browser
+//         });
+
+//         // Create a new context from the browser
+//         var context = await browser.NewContextAsync();
+
+//         var page = await context.NewPageAsync();
+
+//         await page.GotoAsync("https://github.com/login");
+//         await page.FillAsync("input[name='login']", "AniketSelokar-CawTech");
+//         await page.FillAsync("input[name='password']", "Aniket@0464");
+//         await page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).First.ClickAsync();
+
+//         // Wait for successful login (replace with appropriate selector)
+//         await Expect(page.GetByText("Dashboard").First).ToBeAttachedAsync();
+
+
+//         // Store session state correctly
+//         await context.StorageStateAsync(new BrowserContextStorageStateOptions
+//         {
+//             Path = "C:\\Users\\caw_qa\\Documents\\Projects\\lastest-modification\\playwright-dotnet\\playwright\\.auth\\github_session.json" // Specify the path to save the session state
+//         });
+
+//         await context.CloseAsync(); // Close the context instead of the browser
+//         await browser.CloseAsync(); // Close the browser after the test
+//     }
+
+//     [Test]
+//     public async Task RunTestsWithStoredSessionAsync()
+//     {
+//         // Create a new browser instance
+//         var browser = await Playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+//         {
+//             Headless = false // Set to false if you want to see the browser
+//         });
+
+//         // Create a new context from the browser
+//         var context = await browser.NewContextAsync(new BrowserNewContextOptions
+//         {
+//             StorageStatePath = "C:\\Users\\caw_qa\\Documents\\Projects\\lastest-modification\\playwright-dotnet\\playwright\\.auth\\github_session.json"
+//         });
+
+//         var page = await context.NewPageAsync();
+
+//         await page.GotoAsync("https://github.com");
+//         // ... other test actions ... 
+
+//         await context.CloseAsync(); // Close the context instead of the browser
+//         await browser.CloseAsync(); // Close the browser after the test
+//     }
+// }

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace ParkPlaceSample.Infrastructure.Logging;
+namespace PlaywrightDemo.Infrastructure.Logging;
 
 /// <summary>
 /// Manages the global logger instance for the test framework.

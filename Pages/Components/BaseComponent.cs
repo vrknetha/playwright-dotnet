@@ -1,11 +1,11 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using NUnit.Framework;
-using ParkPlaceSample.Infrastructure.Config;
-using ParkPlaceSample.Infrastructure.Config.Models;
-using ParkPlaceSample.Infrastructure.Logging;
+using PlaywrightDemo.Infrastructure.Config;
+using PlaywrightDemo.Infrastructure.Config.Models;
+using PlaywrightDemo.Infrastructure.Logging;
 
-namespace ParkPlaceSample.Pages.Components;
+namespace PlaywrightDemo.Pages.Components;
 
 public abstract class BaseComponent
 {

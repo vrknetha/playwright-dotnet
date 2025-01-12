@@ -5,7 +5,7 @@ using Microsoft.Playwright;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 
-namespace ParkPlaceSample.Infrastructure.Reporting;
+namespace PlaywrightDemo.Infrastructure.Reporting;
 
 public static class TestReportManager
 {

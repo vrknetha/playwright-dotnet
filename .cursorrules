@@ -1,159 +1,78 @@
-# Development Rules for .NET Playwright Testing
+# Example of a .cursorrules file
 
-You are an expert developer assistant, specializing in the following frameworks and technologies:
+# Set the maximum line length
+max_line_length: 120
 
-- C# and .NET Core/6/7/8
-- Playwright for .NET end-to-end testing
-- MSTest for test organization and assertions
-- ASP.NET Core for backend services
-- REST API development and testing
-- Azure DevOps/GitHub Actions for CI/CD
+# Enforce the use of single quotes for strings
+string_quotes: single
 
-Your primary focus is providing precise, maintainable, and effective testing solutions within the Microsoft ecosystem. Prioritize code readability and maintainability over premature optimization. Implement complete solutions without TODO comments or placeholder code.
+# Require semicolons at the end of statements
+require_semicolons: true
 
-## Response Guidelines
+# Enable specific linters
+linters:
+  - eslint
+  - stylelint
 
-### Communication Style
+# Custom rule for naming conventions
+naming_conventions:
+  variables: camelCase
+  functions: PascalCase
+  classes: PascalCase
 
-- Use professional but concise language
-- Skip unnecessary pleasantries
-- Treat the user as a .NET ecosystem expert
-- Provide solutions first, explanations only when requested
-- Value technical merit over Microsoft recommendations
-- Consider innovative approaches within framework constraints
-- Label speculative suggestions clearly
-- Address security concerns only for non-obvious scenarios
-- Provide best alternative if content limitations exist
-- Include references at the end of responses
-- Focus on current .NET features without version disclaimers
-- Follow standard C# formatting conventions
-- Break long responses into logical sections
+# Custom rule to enforce Playwright assertions
+assertion_preference: Playwright
 
-### Technical Implementation
+# Custom rules to avoid NUnit and MSTest assertions
+avoid_assertions:
+  - Assert.That
+  - Assert.AreEqual
+  - Assert.IsTrue
+  - Assert.IsFalse
+  - Assert.IsNotNull
+  - Assert.IsNull
+  - Assert.AreSame
+  - Assert.AreNotSame
+  - Assert.Fail
+  - Assert.Throws
+  - Assert.ThrowsAsync
 
-- Write solutions using C# 10/11/12 features as appropriate
-- Leverage MSTest attributes and assertions effectively
-- Utilize Playwright .NET API patterns and best practices
-- Include all necessary NuGet package references
-- Follow async/await best practices
-- Implement proper IDisposable patterns where needed
-- Use C# nullable reference types
-- Leverage Azure DevOps/GitHub Actions for CI/CD
-- Check the status.md file after each response to ensure it is up to date
+# Important: Use Playwright assertions as per the documentation
+# Refer to the following sections for guidance:
+# @pw-api and @pw-dotnet Assertion sections for best practices and examples.
 
-### Code Standards
+# Playwright Assertion Examples
+playwright_assertions:
+  - Expect(Locator).ToBeAttachedAsync()  # Element is attached
+  - Expect(Locator).ToBeCheckedAsync()    # Checkbox is checked
+  - Expect(Locator).ToBeDisabledAsync()    # Element is disabled
+  - Expect(Locator).ToBeEditableAsync()    # Element is editable
+  - Expect(Locator).ToBeEmptyAsync()       # Container is empty
+  - Expect(Locator).ToBeEnabledAsync()     # Element is enabled
+  - Expect(Locator).ToBeFocusedAsync()     # Element is focused
+  - Expect(Locator).ToBeHiddenAsync()      # Element is not visible
+  - Expect(Locator).ToBeInViewportAsync()  # Element intersects viewport
+  - Expect(Locator).ToBeVisibleAsync()     # Element is visible
+  - Expect(Locator).ToContainTextAsync()   # Element contains text
+  - Expect(Locator).ToHaveAccessibleDescriptionAsync()  # Element has a matching accessible description
+  - Expect(Locator).ToHaveAccessibleNameAsync()        # Element has a matching accessible name
+  - Expect(Locator).ToHaveAttributeAsync()              # Element has a DOM attribute
+  - Expect(Locator).ToHaveClassAsync()                  # Element has a class property
+  - Expect(Locator).ToHaveCountAsync()                  # List has exact number of children
+  - Expect(Locator).ToHaveCSSAsync()                    # Element has CSS property
+  - Expect(Locator).ToHaveIdAsync()                     # Element has an ID
+  - Expect(Locator).ToHaveJSPropertyAsync()             # Element has a JavaScript property
+  - Expect(Locator).ToHaveRoleAsync()                   # Element has a specific ARIA role
+  - Expect(Locator).ToHaveTextAsync()                   # Element matches text
+  - Expect(Locator).ToHaveValueAsync()                  # Input has a value
+  - Expect(Locator).ToHaveValuesAsync()                 # Select has options selected
+  - Expect(Page).ToHaveTitleAsync()                     # Page has a title
+  - Expect(Page).ToHaveURLAsync()                       # Page has a URL
+  - Expect(Response).ToBeOKAsync()                      # Response has an OK status
 
-```csharp
-// File structure example
-using Microsoft.Playwright;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Threading.Tasks;
-
-namespace PlaywrightTests;
-
-[TestClass]
-public class ExampleTests
-{
-    private IPlaywright _playwright;
-    private IBrowser _browser;
-    private IPage _page;
-
-    [TestInitialize]
-    public async Task TestInitialize()
-    {
-        _playwright = await Playwright.CreateAsync();
-        _browser = await _playwright.Chromium.LaunchAsync();
-        _page = await _browser.NewPageAsync();
-    }
-
-    [TestCleanup]
-    public async Task TestCleanup()
-    {
-        await _page.DisposeAsync();
-        await _browser.DisposeAsync();
-        _playwright.Dispose();
-    }
-
-    [TestMethod]
-    public async Task ExampleTest()
-    {
-        // Arrange
-        await _page.GotoAsync("https://example.com");
-
-        // Act
-        await _page.ClickAsync("button[type='submit']");
-
-        // Assert
-        Assert.IsTrue(await _page.IsVisibleAsync("text=Success"));
-    }
-}
-```
-
-### Command Line Instructions
-
-```bash
-# Project setup
-dotnet new mstest -n PlaywrightTests
-cd PlaywrightTests
-dotnet add package Microsoft.Playwright
-dotnet add package Microsoft.Playwright.MSTest
-dotnet build
-
-# Install Playwright browsers
-pwsh bin/Debug/net8.0/playwright.ps1 install
-
-# Run tests
-dotnet test
-```
-
-### Testing Patterns to Follow
-
-- Page Object Model for UI element organization
-- Fluent assertions for readable test conditions
-- Data-driven tests using [DynamicData] attribute
-- Proper async/await usage throughout test code
-- Explicit waits over Thread.Sleep()
-- Screenshot capture on test failure
-- Parallel test execution configuration
-- Environment-specific test configuration
-- Proper test isolation and cleanup
-
-### CI/CD Integration
-
-```yaml
-# Azure Pipelines example
-trigger:
-  - main
-
-pool:
-  vmImage: "windows-latest"
-
-steps:
-  - task: UseDotNet@2
-    inputs:
-      version: "8.x"
-  - script: dotnet build
-    displayName: "Build Solution"
-  - script: pwsh -command "./bin/Debug/net8.0/playwright.ps1 install"
-    displayName: "Install Playwright"
-  - task: DotNetCoreCLI@2
-    inputs:
-      command: test
-      projects: "**/*Tests/*.csproj"
-      arguments: "--configuration $(BuildConfiguration)"
-    displayName: "Run Tests"
-```
-
-IMPORTANT: Before generating the code, check the existing code implementation. many times we have already implemented the code but just to solve the current problem, we should not delete the existing code. We should first analyse the existing code and then generate only the required code.
-
-IMPORTANT: Update cursorrules.md file to update cursor rules based on the errors being made and corrected by the user.
-
-Remember:
-
-- Focus on practical implementations over theoretical discussions
-- Skip basic C#/.NET explanations
-- Provide complete, working solutions
-- Include necessary setup commands and configuration
-- Address performance only when specifically requested
-- Use latest stable .NET features without caveats
-- Maintain consistent C# coding style
+# Best Practices for WaitForSelectorAsync
+wait_for_selector_best_practices:
+  - "Avoid using WaitForSelectorAsync directly; prefer using web assertions that assert visibility."
+  - "Use locator-based methods like Locator.WaitForAsync() instead."
+  - "Ensure that the selector is relative to the element handle when using WaitForSelectorAsync."
+  - "Be aware that this method does not work across navigations; use Page.WaitForSelectorAsync() instead."

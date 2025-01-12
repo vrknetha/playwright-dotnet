@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 
-namespace ParkPlaceSample.Infrastructure.Logging;
+namespace PlaywrightDemo.Infrastructure.Logging;
 
 public class TestContextLogger : ILogger
 {

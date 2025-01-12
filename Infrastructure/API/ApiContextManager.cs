@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using ParkPlaceSample.Infrastructure.Config.Models;
+using PlaywrightDemo.Infrastructure.Config.Models;
 
-namespace ParkPlaceSample.Infrastructure.API;
+namespace PlaywrightDemo.Infrastructure.API;
 
 /// <summary>
 /// Manages the global API context instance for the test framework.

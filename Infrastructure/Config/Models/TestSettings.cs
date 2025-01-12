@@ -1,4 +1,4 @@
-namespace ParkPlaceSample.Infrastructure.Config.Models;
+namespace PlaywrightDemo.Infrastructure.Config.Models;
 
 public class TestSettings
 {
