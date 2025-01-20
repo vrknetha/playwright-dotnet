@@ -1,0 +1,145 @@
+{
+    "cookies": [
+        {
+            "name": "_octo",
+            "value": "GH1.1.982228707.1736798375",
+            "domain": ".github.com",
+            "path": "/",
+            "expires": 1.7683343E+09,
+            "httpOnly": false,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "cpu_bucket",
+            "value": "lg",
+            "domain": ".github.com",
+            "path": "/",
+            "expires": -1,
+            "httpOnly": false,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "preferred_color_mode",
+            "value": "light",
+            "domain": ".github.com",
+            "path": "/",
+            "expires": -1,
+            "httpOnly": false,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "tz",
+            "value": "Asia%2FCalcutta",
+            "domain": ".github.com",
+            "path": "/",
+            "expires": -1,
+            "httpOnly": false,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "_device_id",
+            "value": "ccfdf3341ff95b49e2722e9c6b89de14",
+            "domain": "github.com",
+            "path": "/",
+            "expires": 1.7683343E+09,
+            "httpOnly": true,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "saved_user_sessions",
+            "value": "191847562%3AEDQdpT7qv3-sm1OzVMhsj_fHGEhU7ZYl7UdIBZM5aj1SEHar",
+            "domain": "github.com",
+            "path": "/",
+            "expires": 1.7445743E+09,
+            "httpOnly": true,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "user_session",
+            "value": "EDQdpT7qv3-sm1OzVMhsj_fHGEhU7ZYl7UdIBZM5aj1SEHar",
+            "domain": "github.com",
+            "path": "/",
+            "expires": 1.7380079E+09,
+            "httpOnly": true,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "__Host-user_session_same_site",
+            "value": "EDQdpT7qv3-sm1OzVMhsj_fHGEhU7ZYl7UdIBZM5aj1SEHar",
+            "domain": "github.com",
+            "path": "/",
+            "expires": 1.7380079E+09,
+            "httpOnly": true,
+            "secure": true,
+            "sameSite": "Strict"
+        },
+        {
+            "name": "tz",
+            "value": "Asia%2FCalcutta",
+            "domain": "github.com",
+            "path": "/",
+            "expires": -1,
+            "httpOnly": true,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "color_mode",
+            "value": "%7B%22color_mode%22%3A%22auto%22%2C%22light_theme%22%3A%7B%22name%22%3A%22light%22%2C%22color_mode%22%3A%22light%22%7D%2C%22dark_theme%22%3A%7B%22name%22%3A%22dark%22%2C%22color_mode%22%3A%22dark%22%7D%7D",
+            "domain": ".github.com",
+            "path": "/",
+            "expires": -1,
+            "httpOnly": false,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "logged_in",
+            "value": "yes",
+            "domain": ".github.com",
+            "path": "/",
+            "expires": 1.7683343E+09,
+            "httpOnly": true,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "dotcom_user",
+            "value": "AniketSelokar-CawTech",
+            "domain": ".github.com",
+            "path": "/",
+            "expires": 1.7683343E+09,
+            "httpOnly": true,
+            "secure": true,
+            "sameSite": "Lax"
+        },
+        {
+            "name": "_gh_sess",
+            "value": "grHFkI8%2FdmShJZVlhhSglqVxKZNuZmp16v3icgt5U%2BGJAujZrzuCgXOl5FPavvYrv1Et06vcF%2FALGa5i4LHntb9nZ1OKLkq%2F15Zm%2BcEAbghpUJKoQ3GVI0PyFPeyjk1AH5cOpq50RJ4ED99ecjmnx9frTJm0jhNCRgasQiFT8CZtu68HI4D1f%2FykBT7o8IT7oeAk2PKdlPQkcL22FSKnR%2FLThKxwf8EwIgb6tVby8YlZarAlzmyHrILpJJFtlquvwwd%2BMYZ5oAYJPAt3N2WTfGTCg5czIs%2BjYLVPcHejnTUgtE9Ps9nW1i18EPINjEi01UWXSx%2FT3GcvpZ79JYFxLgQQiDfE0lK1g1HlJjA4wtLkWBc9Ft0JIsN8d0KCl9OTwA1iXzR61rhHYeU%2BMDJ7jRpSWp6OkqhDPV6X0cBYPg8EWIyh1d9lsgxAa1uQxBwLeeyS6VQCoNbgtFIUSCopiJnUYEjzq4biZRuO%2B0H3rjrjPncOeKARXoS9mF1Smm5gG%2B91CaR%2BM8i4Y1P1FTguYzsPONT7CKZBAjQswRlaHpv9ixnJb93wblz52p6dzjEQibiGFratiYf3wxefOX095o6m0W08zIqA9jq517XN9x2Eo8q%2BO0bYBAnvtDA2C7ZGDN%2FKxMYksIrmzLfdJCdEgs8AZqnLVBJMic4fQYHVno6hbQh8FGRmbfU5k3Rg44UgwO9BkrpV9wiNW7QRHfdHWFIX8mD49q%2BSSGvvwkaQxTT2AzCBcG93lj8wjmGHhMAx31eefu1N2aOGd9fZcfp%2FnzIZyQg3Ff1ePxQXhzl4xHKIHVsDU6iJpXshOyAhr0HyoMOzNQSHRQ0%2BJur9jNLbNVppw2zFv362yJumhV0CcZy%2BbtImz6ixoc%2BTxFMDPcZ296bA668KUQTB%2FxxGRyVX%2Blgq3xf%2FaJT4d6Pf5eSeuFuJInjs%2B3diE3x%2FK2LMzDKDtHskd4JB3sHQYX3IFO1p1gLVUgFFym6vZvHSSk30IkdeR51m--pGozXp2IkGxer2yC--8IXuuvU6M4z8hFhO2RRN9g%3D%3D",
+            "domain": "github.com",
+            "path": "/",
+            "expires": -1,
+            "httpOnly": true,
+            "secure": true,
+            "sameSite": "Lax"
+        }
+    ],
+    "origins": [
+        {
+            "origin": "https://github.com",
+            "localStorage": [
+                {
+                    "name": "bundle-urls",
+                    "value": "{\u0022wp-runtime.js\u0022:\u0022https://github.githubassets.com/assets/wp-runtime-7f3dbbe4cda4.js\u0022,\u0022vendors-node_modules_oddbird_popover-polyfill_dist_popover_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_oddbird_popover-polyfill_dist_popover_js-9da652f58479.js\u0022,\u0022vendors-node_modules_github_arianotify-polyfill_ariaNotify-polyfill_js-node_modules_github_mi-3abb8f.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_arianotify-polyfill_ariaNotify-polyfill_js-node_modules_github_mi-3abb8f-d7e6bc799724.js\u0022,\u0022ui_packages_failbot_failbot_ts.js\u0022:\u0022https://github.githubassets.com/assets/ui_packages_failbot_failbot_ts-71291b73d826.js\u0022,\u0022environment.js\u0022:\u0022https://github.githubassets.com/assets/environment-7b93e0f0c8ff.js\u0022,\u0022vendors-node_modules_primer_behaviors_dist_esm_index_mjs.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_primer_behaviors_dist_esm_index_mjs-ea2a5d75d580.js\u0022,\u0022vendors-node_modules_github_selector-observer_dist_index_esm_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_selector-observer_dist_index_esm_js-f690fd9ae3d5.js\u0022,\u0022vendors-node_modules_github_relative-time-element_dist_index_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_relative-time-element_dist_index_js-f6da4b3fa34c.js\u0022,\u0022vendors-node_modules_github_auto-complete-element_dist_index_js-node_modules_github_catalyst_-8e9f78.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_auto-complete-element_dist_index_js-node_modules_github_catalyst_-8e9f78-a74b4e0a8a6b.js\u0022,\u0022vendors-node_modules_github_text-expander-element_dist_index_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_text-expander-element_dist_index_js-78748950cb0c.js\u0022,\u0022vendors-node_modules_github_filter-input-element_dist_index_js-node_modules_github_remote-inp-b5f1d7.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_filter-input-element_dist_index_js-node_modules_github_remote-inp-b5f1d7-a1760ffda83d.js\u0022,\u0022vendors-node_modules_github_markdown-toolbar-element_dist_index_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_markdown-toolbar-element_dist_index_js-ceef33f593fa.js\u0022,\u0022vendors-node_modules_github_file-attachment-element_dist_index_js-node_modules_primer_view-co-c44a69.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_file-attachment-element_dist_index_js-node_modules_primer_view-co-c44a69-c6d035fa8dc8.js\u0022,\u0022github-elements.js\u0022:\u0022https://github.githubassets.com/assets/github-elements-f991cfab5105.js\u0022,\u0022element-registry.js\u0022:\u0022https://github.githubassets.com/assets/element-registry-3b5362d3d402.js\u0022,\u0022vendors-node_modules_braintree_browser-detection_dist_browser-detection_js-node_modules_githu-bb80ec.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_braintree_browser-detection_dist_browser-detection_js-node_modules_githu-bb80ec-7f43298e364b.js\u0022,\u0022vendors-node_modules_lit-html_lit-html_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_lit-html_lit-html_js-be8cb88f481b.js\u0022,\u0022vendors-node_modules_github_mini-throttle_dist_index_js-node_modules_morphdom_dist_morphdom-e-7c534c.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_mini-throttle_dist_index_js-node_modules_morphdom_dist_morphdom-e-7c534c-a4a1922eb55f.js\u0022,\u0022vendors-node_modules_github_turbo_dist_turbo_es2017-esm_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_turbo_dist_turbo_es2017-esm_js-e3cbe28f1638.js\u0022,\u0022vendors-node_modules_github_remote-form_dist_index_js-node_modules_delegated-events_dist_inde-893f9f.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_remote-form_dist_index_js-node_modules_delegated-events_dist_inde-893f9f-6cf3320416b8.js\u0022,\u0022vendors-node_modules_color-convert_index_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_color-convert_index_js-e3180fe3bcb3.js\u0022,\u0022vendors-node_modules_github_quote-selection_dist_index_js-node_modules_github_session-resume_-69cfcc.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_quote-selection_dist_index_js-node_modules_github_session-resume_-69cfcc-833249ee3034.js\u0022,\u0022ui_packages_updatable-content_updatable-content_ts.js\u0022:\u0022https://github.githubassets.com/assets/ui_packages_updatable-content_updatable-content_ts-863ef5872a03.js\u0022,\u0022app_assets_modules_github_behaviors_task-list_ts-app_assets_modules_github_sso_ts-ui_packages-900dde.js\u0022:\u0022https://github.githubassets.com/assets/app_assets_modules_github_behaviors_task-list_ts-app_assets_modules_github_sso_ts-ui_packages-900dde-917d4bda1f1a.js\u0022,\u0022app_assets_modules_github_sticky-scroll-into-view_ts.js\u0022:\u0022https://github.githubassets.com/assets/app_assets_modules_github_sticky-scroll-into-view_ts-7cbef09a422c.js\u0022,\u0022app_assets_modules_github_behaviors_ajax-error_ts-app_assets_modules_github_behaviors_include-d0d0a6.js\u0022:\u0022https://github.githubassets.com/assets/app_assets_modules_github_behaviors_ajax-error_ts-app_assets_modules_github_behaviors_include-d0d0a6-b41aeef03499.js\u0022,\u0022app_assets_modules_github_behaviors_commenting_edit_ts-app_assets_modules_github_behaviors_ht-83c235.js\u0022:\u0022https://github.githubassets.com/assets/app_assets_modules_github_behaviors_commenting_edit_ts-app_assets_modules_github_behaviors_ht-83c235-fb43816ab83c.js\u0022,\u0022behaviors.js\u0022:\u0022https://github.githubassets.com/assets/behaviors-999d1d44cef0.js\u0022,\u0022vendors-node_modules_delegated-events_dist_index_js-node_modules_github_catalyst_lib_index_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_delegated-events_dist_index_js-node_modules_github_catalyst_lib_index_js-f6223d90c7ba.js\u0022,\u0022notifications-global.js\u0022:\u0022https://github.githubassets.com/assets/notifications-global-cfcd9f4f0f23.js\u0022,\u0022vendors-node_modules_virtualized-list_es_index_js-node_modules_github_template-parts_lib_index_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_virtualized-list_es_index_js-node_modules_github_template-parts_lib_index_js-96453a51f920.js\u0022,\u0022vendors-node_modules_github_filter-input-element_dist_index_js-node_modules_github_remote-inp-3eebbd.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_filter-input-element_dist_index_js-node_modules_github_remote-inp-3eebbd-0763620ad7bf.js\u0022,\u0022app_assets_modules_github_ref-selector_ts.js\u0022:\u0022https://github.githubassets.com/assets/app_assets_modules_github_ref-selector_ts-842c74d2eab4.js\u0022,\u0022app_assets_modules_github_settings_runner-groups_ts-app_assets_modules_github_throttled-input-d4dbeb.js\u0022:\u0022https://github.githubassets.com/assets/app_assets_modules_github_settings_runner-groups_ts-app_assets_modules_github_throttled-input-d4dbeb-443053e6dc51.js\u0022,\u0022settings.js\u0022:\u0022https://github.githubassets.com/assets/settings-a45b55fcc4b9.js\u0022,\u0022vendors-node_modules_github_remote-form_dist_index_js-node_modules_delegated-events_dist_inde-94fd67.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_remote-form_dist_index_js-node_modules_delegated-events_dist_inde-94fd67-73b675cf164a.js\u0022,\u0022sessions.js\u0022:\u0022https://github.githubassets.com/assets/sessions-5d6426bbf16a.js\u0022,\u0022vendors-node_modules_delegated-events_dist_index_js-node_modules_github_memoize_dist_esm_inde-455471.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_delegated-events_dist_index_js-node_modules_github_memoize_dist_esm_inde-455471-db0dac70ef9e.js\u0022,\u0022signup.js\u0022:\u0022https://github.githubassets.com/assets/signup-7259f76215e4.js\u0022,\u0022primer-react.js\u0022:\u0022https://github.githubassets.com/assets/primer-react-eb226383faf4.js\u0022,\u0022react-core.js\u0022:\u0022https://github.githubassets.com/assets/react-core-1669be71ff4c.js\u0022,\u0022react-lib.js\u0022:\u0022https://github.githubassets.com/assets/react-lib-2131e17288a8.js\u0022,\u0022octicons-react.js\u0022:\u0022https://github.githubassets.com/assets/octicons-react-611691cca2f6.js\u0022,\u0022vendors-node_modules_tanstack_query-core_build_modern_queryClient_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_tanstack_query-core_build_modern_queryClient_js-e6f07a7e80b7.js\u0022,\u0022vendors-node_modules_emotion_is-prop-valid_dist_emotion-is-prop-valid_esm_js-node_modules_emo-37e3d5.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_emotion_is-prop-valid_dist_emotion-is-prop-valid_esm_js-node_modules_emo-37e3d5-92730c05e718.js\u0022,\u0022vendors-node_modules_github_mini-throttle_dist_index_js-node_modules_stacktrace-parser_dist_s-e7dcdd.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_github_mini-throttle_dist_index_js-node_modules_stacktrace-parser_dist_s-e7dcdd-f7cc96ebae76.js\u0022,\u0022vendors-node_modules_oddbird_popover-polyfill_dist_popover-fn_js.js\u0022:\u0022https://github.githubassets.com/assets/vendors-node_modules_oddbird_popover-polyfill_dist_popover-fn_js-55fea94174bf.js\u0022,\u0022ui_packages_ui-commands_ui-commands_ts.js\u0022:\u0022https://github.githubassets.com/assets/ui_packages_ui-commands_ui-commands_ts-fecaee5fb732.js\u0022,\u0022keyboard-shortcuts-dialog.js\u0022:\u0022https://github.githubassets.com/assets/keyboard-shortcuts-dialog-958cae8ecd6c.js\u0022,\u0022light.css\u0022:\u0022https://github.githubassets.com/assets/light-3ba8f34e8dbf.css\u0022,\u0022dark.css\u0022:\u0022https://github.githubassets.com/assets/dark-751b6cd206d8.css\u0022,\u0022primer-primitives.css\u0022:\u0022https://github.githubassets.com/assets/primer-primitives-908aff9bc8e4.css\u0022,\u0022primer.css\u0022:\u0022https://github.githubassets.com/assets/primer-20f98ef38fd8.css\u0022,\u0022global.css\u0022:\u0022https://github.githubassets.com/assets/global-7e1d0e4dee6a.css\u0022,\u0022github.css\u0022:\u0022https://github.githubassets.com/assets/github-e72829f5538b.css\u0022}"
+                }
+            ]
+        }
+    ]
+}

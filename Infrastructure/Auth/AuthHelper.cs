@@ -4,8 +4,10 @@ using Microsoft.Playwright;
 using PlaywrightDemo.Infrastructure.Config.Models;
 using PlaywrightDemo.Infrastructure.Config;
 using PlaywrightDemo.Infrastructure.Logging;
+using PlaywrightDemo.Infrastructure.TestData.Models;
 using NUnit.Framework;
 using System.Runtime.CompilerServices;
+using System.IO;
 
 namespace PlaywrightDemo.Infrastructure.Auth;
 
@@ -19,9 +21,21 @@ public class AuthHelper
     private readonly HashSet<string> _validatedStates;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private readonly List<User> _users;
+    private readonly string _commonPassword;
 
-    public AuthHelper()
+    public AuthHelper() : this(LoadUsersFromConfigFile(),
+        ConfigurationLoader.GetSettings<TestSettings>().Auth.CommonPassword ??
+        throw new InvalidOperationException("CommonPassword not found in settings."))
     {
+        // This constructor is for backward compatibility
+    }
+
+    public AuthHelper(List<User> users, string commonPassword)
+    {
+        _users = users ?? throw new ArgumentNullException(nameof(users));
+        _commonPassword = commonPassword ?? throw new ArgumentNullException(nameof(commonPassword));
+
         _logger = LoggerManager.Current;
         _settings = ConfigurationLoader.GetSettings<TestSettings>();
         _jsonOptions = new JsonSerializerOptions
@@ -75,18 +89,36 @@ public class AuthHelper
         }
     }
 
-    /// <summary>
-    /// Generates a new authentication state for the specified credentials and saves it to a file.
-    /// </summary>
-    public async Task<string> GenerateAuthStateAsync(string username, string password, [CallerMemberName] string filename = "")
+    private static List<User> LoadUsersFromConfigFile()
     {
-        LogMessage(LogLevel.Information, $"Starting authentication state generation for user: {username}");
+        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+        var configFilePath = Path.Combine(projectRoot, "users.json");
+        Console.WriteLine($"Loading users from config file path: {configFilePath}");
 
-        if (string.IsNullOrEmpty(filename))
+        if (!File.Exists(configFilePath))
         {
-            filename = $"authstate-{Guid.NewGuid()}.json";
-            LogMessage(LogLevel.Information, $"Generated filename: {filename}");
+            Console.WriteLine($"Error: Config file not found at path: {configFilePath}");
+            throw new FileNotFoundException("User configuration file not found.", configFilePath);
         }
+
+        var json = File.ReadAllText(configFilePath);
+        return JsonSerializer.Deserialize<List<User>>(json) ?? new List<User>();
+    }
+
+    public async Task GenerateAllAuthStatesAsync()
+    {
+        foreach (var user in _users)
+        {
+            await GenerateAuthStateAsync(user, $"{user.Username}_state.json");
+        }
+    }
+
+    public async Task<string> GenerateAuthStateAsync(User user, [CallerMemberName] string filename = "")
+    {
+        _logger.LogInformation("Starting authentication state generation for user: {Username}", user.Username);
+
+        filename = $"{user.Username}_state.json";
+        _logger.LogInformation("Generated filename: {Filename}", filename);
 
         var filePath = Path.Combine(_authDirectory, filename);
         IBrowserContext? context = null;
@@ -98,10 +130,9 @@ public class AuthHelper
             page = await context.NewPageAsync();
 
             await NavigateToLoginPage(page);
-            await PerformLogin(page, username, password);
+            await PerformLogin(page, user.Username, _commonPassword);
             await SaveAuthState(context, filePath);
 
-            // Cache the successful auth state
             _authStateCache[filename] = filePath;
             _validatedStates.Add(filePath);
 
@@ -109,8 +140,8 @@ public class AuthHelper
         }
         catch (Exception ex)
         {
-            LogMessage(LogLevel.Error, $"Failed to generate authentication state for user {username}", ex);
-            throw new AuthenticationException($"Failed to generate authentication state for user {username}", ex);
+            _logger.LogError(ex, "Failed to generate authentication state for user {Username}", user.Username);
+            throw new AuthenticationException($"Failed to generate authentication state for user {user.Username}", ex);
         }
         finally
         {
@@ -140,13 +171,12 @@ public class AuthHelper
     {
         try
         {
-            LogMessage(LogLevel.Information, "Filling login credentials");
-            await page.FillAsync("input[name='username']", username);
+            _logger.LogInformation("Filling login credentials for user: {Username}", username);
+            await page.FillAsync("input[name='login']", username);
             await page.FillAsync("input[name='password']", password);
 
-            LogMessage(LogLevel.Information, "Submitting login form");
+            _logger.LogInformation("Submitting login form for user: {Username}", username);
 
-            // Replace deprecated RunAndWaitForNavigationAsync with newer pattern
             var navigationTask = page.WaitForNavigationAsync();
             await page.ClickAsync("button[type='submit']");
             await navigationTask;
@@ -157,11 +187,11 @@ public class AuthHelper
                 throw new AuthenticationException($"Login failed for user: {username}. {errorMessage}");
             }
 
-            LogMessage(LogLevel.Information, "Login successful");
+            _logger.LogInformation("Login successful for user: {Username}", username);
         }
         catch (Exception ex)
         {
-            LogMessage(LogLevel.Error, "Login attempt failed", ex);
+            _logger.LogError(ex, "Login attempt failed for user: {Username}", username);
             throw;
         }
     }
@@ -262,7 +292,7 @@ public class AuthHelper
             page = await context.NewPageAsync();
 
             LogMessage(LogLevel.Information, "Navigating to protected page to verify auth state");
-            await page.GotoAsync($"{_settings.Environment.BaseUrl}/profile");
+            await page.GotoAsync($"{_settings.Environment.BaseUrl}/AniketSelokar-CawTech");
 
             var isAuthenticated = !page.Url.Contains("/login");
             LogMessage(LogLevel.Information, $"Auth state verification result: {(isAuthenticated ? "Valid" : "Invalid")}");
@@ -368,6 +398,12 @@ public class AuthHelper
                 }
                 break;
         }
+    }
+
+    public static async Task SaveSessionStorageAsync(IPage page, string filePath)
+    {
+        var sessionStorage = await page.EvaluateAsync<string>("() => JSON.stringify(sessionStorage)");
+        await File.WriteAllTextAsync(filePath, sessionStorage);
     }
 }
 

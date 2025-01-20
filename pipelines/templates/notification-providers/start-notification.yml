@@ -1,0 +1,63 @@
+steps:
+- task: PowerShell@2
+  name: SendStartNotification
+  inputs:
+    targetType: 'inline'
+    script: |
+      $body = @{
+          "@type" = "MessageCard"
+          "@context" = "http://schema.org/extensions"
+          "summary" = "Pipeline Started"
+          "themeColor" = "0076D7"
+          "sections" = @(
+              @{
+                  "activityTitle" = "🚀 Pipeline Started - Build $(Build.BuildNumber)"
+                  "facts" = @(
+                      @{
+                          "name" = "Branch"
+                          "value" = "$(Branch)"
+                      }
+                      @{
+                          "name" = "Triggered By"
+                          "value" = "$(Triggerer)"
+                      }
+                      @{
+                          "name" = "Total Tests"
+                          "value" = "$(TotalTestsToRun)"
+                      }
+                      @{
+                          "name" = "Estimated Duration"
+                          "value" = "$(EstimatedDuration)"
+                      }
+                      @{
+                          "name" = "Previous Success Rate"
+                          "value" = "$(PreviousSuccessRate)%"
+                      }
+                      @{
+                          "name" = "Environment"
+                          "value" = "$(Environment)"
+                      }
+                  )
+                  "markdown" = $true
+              }
+              @{
+                  "activitySubtitle" = "Commit Message"
+                  "text" = "$(CommitMessage)"
+              }
+          )
+          "potentialAction" = @(
+              @{
+                  "@type" = "OpenUri"
+                  "name" = "View Build"
+                  "targets" = @(
+                      @{
+                          "os" = "default"
+                          "uri" = "$(System.TeamFoundationCollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)"
+                      }
+                  )
+              }
+          )
+      }
+      
+      $jsonBody = ConvertTo-Json $body -Depth 10
+      Invoke-RestMethod -Uri "$(TeamsWebhookUrl)" -Method Post -Body $jsonBody -ContentType 'application/json' 

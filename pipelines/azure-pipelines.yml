@@ -1,0 +1,15 @@
+# ... previous stages remain the same ...
+
+- stage: Notifications
+  displayName: 'Send Notifications'
+  dependsOn: RunTests
+  condition: always()
+  jobs:
+  - job: SendNotifications
+    displayName: 'Send Test Results Notifications'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - template: templates/notifications.yml
+      parameters:
+        testResultsPath: '$(System.DefaultWorkingDirectory)/TestResults' 

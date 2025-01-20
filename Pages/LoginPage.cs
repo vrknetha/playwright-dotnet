@@ -1,59 +1,68 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.Playwright; // Ensure this line is present
+using Microsoft.Playwright;
 using System.Text.Json;
 using System.IO;
-using PlaywrightDemo.Pages;
+using Microsoft.Extensions.Logging;
+using PlaywrightDemo.Infrastructure.Base;
+using PlaywrightDemo.Infrastructure.TestData.Models;
+using PlaywrightDemo.Infrastructure.Logging;
+
+namespace PlaywrightDemo.Pages.UI;
 
 public class LoginPage : BasePage
 {
     private readonly IPage _page;
+    private string CommonPassword => Settings.Auth.CommonPassword;
 
     public LoginPage(IPage page) : base(page)
     {
         _page = page;
     }
 
-    public async Task<bool> LoginAsync(User user)
+    public async Task LoginAsync(User user)
     {
-        // Load session storage if it exists
+        Logger.LogInformation("Navigating to login page");
+        await Page.GotoAsync($"{Settings.Environment.BaseUrl}/login");
 
-        await _page.GotoAsync("https://github.com/login");
-        await _page.GetByLabel("Username or email address").FillAsync(user.Username);
-        await Expect(_page.GetByLabel("Password")).ToBeVisibleAsync();
-        await _page.GetByLabel("Password").FillAsync(user.Password);
+        Logger.LogInformation("Filling login credentials");
+        await Page.FillAsync("input[name='login']", user.Username);
+        await Page.FillAsync("input[name='password']", user.Password);
 
-        // Click the "Sign in" button
-        await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).First.ClickAsync();
+        Logger.LogInformation("Submitting login form");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-        // Check if login was successful
-        await AssertLoginSuccessfulAsync();
         await SaveSessionStorageAsync(user.Username);
-        return true;
+        Logger.LogInformation("Login successful");
     }
 
-    public async Task NavitageToDashBoard()
+    private async Task<string> TakeScreenshot(string name)
     {
-        await _page.GotoAsync("https://github.com");
+        var path = Path.Combine(Settings.Reporting.Screenshots.Directory,
+            $"{name}_{DateTime.Now:yyyyMMddHHmmss}.png");
+        await Page.ScreenshotAsync(new() { Path = path, FullPage = true });
+        return path;
     }
 
-    public async Task AssertLoginSuccessfulAsync()
+    public async Task NavigateToDashboardAsync()
+    {
+        await _page.GotoAsync(Settings.Environment.BaseUrl);
+    }
+
+    public async Task ExpectLoginSuccessfulAsync()
     {
         await Expect(_page.GetByText("Dashboard").First).ToBeAttachedAsync();
     }
 
     private async Task SaveSessionStorageAsync(string username)
     {
-        // Define the path for the session storage file
-        var filePath = Path.Combine("C:\\Users\\caw_qa\\Documents\\Projects\\lastest-modification\\playwright-dotnet\\playwright\\.auth", $"{username}_state.json");
+        var authPath = TestBase.GetAuthStatePath();
+        var filePath = Path.Combine(authPath, $"{username}_state.json");
 
-        // Save the current storage state to the specified file
         await _page.Context.StorageStateAsync(new BrowserContextStorageStateOptions
         {
-            Path = filePath // Save the storage state to the specified file
+            Path = filePath
         });
     }
-
-
 }
 

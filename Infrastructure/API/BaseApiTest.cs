@@ -6,6 +6,7 @@ using PlaywrightDemo.Infrastructure.Config;
 using PlaywrightDemo.Infrastructure.Logging;
 using Microsoft.Playwright;
 using PlaywrightDemo.Infrastructure.Config.Models;
+using PlaywrightDemo.Infrastructure.Base;
 
 namespace PlaywrightDemo.Infrastructure.API;
 
@@ -13,7 +14,7 @@ namespace PlaywrightDemo.Infrastructure.API;
 /// Base class for API tests providing common functionality and setup.
 /// </summary>
 [TestFixture]
-public abstract class BaseApiTest
+public abstract class BaseApiTest : TestBase
 {
     protected HttpClient HttpClient { get; private set; } = null!;
     protected TestSettings Settings { get; private set; } = null!;
@@ -23,51 +24,22 @@ public abstract class BaseApiTest
     private IPlaywright _playwright = null!;
 
     [SetUp]
-    public virtual async Task TestInitialize()
+    public override async Task BaseTestInitialize()
     {
-        InitializeLogger();
+        await base.BaseTestInitialize();
         Logger.LogInformation("Starting API test: {TestName}", TestContext.CurrentContext.Test.Name);
-
-        try
-        {
-            // Initialize configuration with logger
-            ConfigurationLoader.Initialize(Logger);
-            Settings = ConfigurationLoader.GetSettings<TestSettings>();
-
-            HttpClient = CreateHttpClient();
-            await OnTestInitialize();
-
-            // Initialize Playwright
-            _playwright = await Playwright.CreateAsync();
-
-            // Initialize API context
-            ApiContext = await _playwright.APIRequest.NewContextAsync(new()
-            {
-                BaseURL = Settings.Environment.ApiBaseUrl,
-                IgnoreHTTPSErrors = true
-            });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to initialize API test");
-            throw;
-        }
     }
 
     [TearDown]
-    public virtual async Task TestCleanup()
+    public override async Task BaseTestCleanup()
     {
         try
         {
-            await OnTestCleanup();
-
-            if (TestContext.CurrentContext.Result.Outcome.Status != TestStatus.Passed)
+            // Cleanup API resources
+            if (ApiContext != null)
             {
-                Logger.LogWarning("API test failed: {TestOutcome}", TestContext.CurrentContext.Result.Outcome.Status);
-            }
-            else
-            {
-                Logger.LogInformation("API test passed successfully");
+                await ApiContext.DisposeAsync();
+                Logger.LogInformation("API context disposed successfully");
             }
         }
         catch (Exception ex)
@@ -77,19 +49,8 @@ public abstract class BaseApiTest
         }
         finally
         {
-            HttpClient.Dispose();
+            await base.BaseTestCleanup();
         }
-    }
-
-    [TearDown]
-    public virtual async Task BaseApiTestCleanup()
-    {
-        if (ApiContext != null)
-        {
-            await ApiContext.DisposeAsync();
-        }
-
-        _playwright?.Dispose();
     }
 
     protected virtual Task OnTestInitialize() => Task.CompletedTask;

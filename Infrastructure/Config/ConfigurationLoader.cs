@@ -29,53 +29,18 @@ public static class ConfigurationLoader
         LogConfigurationInfo();
     }
 
-    private static void LoadConfiguration()
+    public static IConfiguration LoadConfiguration()
     {
-        try
-        {
-            var environment = GetEnvironment();
-            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-            var configPaths = new[]
-            {
-                Path.Combine(projectRoot, "appsettings.json"),
-                Path.Combine(AppContext.BaseDirectory, "appsettings.json")
-            };
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
 
-            _logger?.LogInformation("Searching for configuration file in:");
-            foreach (var path in configPaths)
-            {
-                _logger?.LogInformation("  - {Path}", path);
-                if (File.Exists(path))
-                {
-                    _logger?.LogInformation("Found configuration file at: {Path}", path);
-                }
-            }
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables();
 
-            var configPath = configPaths.FirstOrDefault(File.Exists);
-            if (configPath == null)
-            {
-                _logger?.LogError("Could not find appsettings.json in any of the expected locations.");
-                throw new FileNotFoundException("Could not find appsettings.json in any of the expected locations.");
-            }
-
-            _logger?.LogInformation("Using configuration file: {ConfigPath}", configPath);
-            var configContent = File.ReadAllText(configPath);
-            _logger?.LogInformation("Configuration content: {Content}", configContent);
-
-            _configuration = new ConfigurationBuilder()
-                .SetBasePath(Path.GetDirectoryName(configPath)!)
-                .AddJsonFile(Path.GetFileName(configPath), optional: false, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
-                .AddEnvironmentVariables()
-                .Build();
-
-            ValidateConfiguration();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to load configuration");
-            throw new InvalidOperationException("Failed to load configuration. See inner exception for details.", ex);
-        }
+        _configuration = builder.Build();
+        return _configuration;
     }
 
     private static void ValidateConfiguration()

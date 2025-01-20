@@ -7,6 +7,7 @@ public class TestSettings
     public TimeoutSettings Timeouts { get; set; } = new();
     public TestDataSettings TestData { get; set; } = new();
     public ReportingSettings Reporting { get; set; } = new();
+    public AuthSettings Auth { get; set; } = new();
 }
 
 public class TestDataSettings

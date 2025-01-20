@@ -1,0 +1,38 @@
+steps:
+- task: PowerShell@2
+  name: SendTeamsNotification
+  condition: always()
+  inputs:
+    targetType: 'inline'
+    script: |
+      $body = @{
+          "@type" = "MessageCard"
+          "@context" = "http://schema.org/extensions"
+          "summary" = "Test Results Summary"
+          "themeColor" = "$(FailedTests)" -eq "0" ? "00FF00" : "FF0000"
+          "sections" = @(
+              @{
+                  "activityTitle" = "Playwright Test Results - Build $(Build.BuildNumber)"
+                  "facts" = @(
+                      @{
+                          "name" = "Total Tests"
+                          "value" = "$(TotalTests)"
+                      }
+                      @{
+                          "name" = "Passed Tests"
+                          "value" = "$(PassedTests)"
+                      }
+                      @{
+                          "name" = "Failed Tests"
+                          "value" = "$(FailedTests)"
+                      }
+                  )
+              }
+          )
+      }
+      
+      $jsonBody = ConvertTo-Json $body -Depth 10
+      
+      Invoke-RestMethod -Uri "$(TeamsWebhookUrl)" -Method Post -Body $jsonBody -ContentType 'application/json'
+  env:
+    TeamsWebhookUrl: $(TeamsWebhookUrl) 

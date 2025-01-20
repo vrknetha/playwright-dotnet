@@ -1,46 +1,76 @@
-# Refactor Status Tracker
+# Refactoring Status Tracker
 
-This document tracks the progress of refactoring tasks for the Playwright .NET test automation framework. Each task's details can be found in `refactor.md`.
+## Directory Structure Changes
+1. **Create New Directories** [Ref: Step 1.1]
+   - Create `Pages/UI` directory
+   - Create `Pages/API` directory
+   - Create `Tests/ApiTests` directory
+   - Create `Tests/UiTests` directory
+   - Status: Completed
+   - Notes: All directories created successfully on Jan 15, 2024
 
-## Task Status Overview
+2. **File Relocations** [Ref: Step 1.2]
+   - Move `GitHubApiPage.cs` to `Pages/API` - Status: Completed (already in correct location)
+   - Move `BaseApiObject.cs` to `Pages/API/BaseApiPage.cs` - Status: Completed
+   - Move `GitHubApiTests.cs` to `Tests/ApiTests` - Status: Blocked (file not found)
+   - Move `SampleTest.cs` to `Tests/UiTests` - Status: Completed
+   - Overall Status: Partially Complete
+   - Notes: Most files moved successfully. GitHubApiTests.cs not found in codebase - may need to be created later.
 
-| Task ID | Name | Status | Description | Notes |
-|---------|------|--------|-------------|-------|
-| T1 | Update Project Structure | Completed | Reorganize project files and directories for improved modularity | - Create Infrastructure directory<br>- Move existing projects<br>- Create .auth directory<br>- Update pipeline files |
-| T2 | Refactor AuthHelper | Pending | Refactor AuthHelper to use LoginPage for login actions | - Create ILoginPage interface<br>- Update LoginPage implementation<br>- Modify AuthHelper to use LoginPage |
-| T3 | Migrate Settings | Pending | Migrate settings from runsettings.xml to appsettings.json | - Move settings to appsettings.json<br>- Update pipeline parameters<br>- Remove runsettings.xml |
-| T4 | Implement Parallel Auth State Generation | Pending | Enable concurrent generation of auth state files | - Update AuthStateGenerator<br>- Add parallel processing<br>- Handle sharding |
-| T5 | Handle User Credentials | Pending | Create strongly-typed configuration for auth states | - Create UserSettings class<br>- Update configuration logic<br>- Modify auth state generation |
-| T6 | Dynamic appsettings.json | Pending | Implement dynamic config file generation | - Add JsonSerializer<br>- Handle dynamic config updates<br>- Update config mapping |
-| T7 | Update generate-auth-states.yml | Pending | Modify pipeline for dynamic user creation and auth states | - Add dynamic user creation<br>- Update CLI interface<br>- Handle artifacts |
-| T8 | Update sharded-test.yml | Pending | Update test execution with new auth state handling | - Define auth state mapping<br>- Update matrix generation<br>- Modify test execution |
-| T9 | Update build.yml | Pending | Update build process for new project structure | - Reference required projects<br>- Update build configurations<br>- Handle dependencies |
-| T10 | Update merge-reports.yml | Pending | Update report merging for sharded execution | - Install ReportGenerator<br>- Update merge logic<br>- Handle artifacts |
-| T11 | Update notify.yml | Pending | Update notification system with new parameters | - Update result access<br>- Modify notification logic<br>- Handle new parameters |
-| T12 | Update azure-pipelines.yml | Pending | Update main pipeline with new stages and parameters | - Modify pipeline stages<br>- Update parameters<br>- Ensure correct ordering |
-| T13 | Clean Up and Finalize | Pending | Final review and cleanup of codebase | - Remove redundant code<br>- Update documentation<br>- Final testing |
+## Code Refactoring Tasks
+3. **BaseApiPage Implementation** [Ref: Step 2]
+   - Update namespace and inheritance
+   - Add required using statements
+   - Implement constructor and assertion methods
+   - Status: Completed
+   - Notes: Successfully updated BaseApiPage with Playwright assertions and proper namespace. Using a combination of Playwright's Expect for response status and NUnit assertions for JSON content validation.
 
-## Progress Updates
+4. **GitHubApiPage Updates** [Ref: Step 3]
+   - Update namespace and inheritance
+   - Remove redundant assertion helpers
+   - Modify API methods to return Task<IAPIResponse>
+   - Add verification methods
+   - Status: Completed
+   - Notes: Successfully updated GitHubApiPage to use BaseApiPage assertions, simplified return types to IAPIResponse, and added dedicated verification methods.
 
-### T1 - Update Project Structure (Completed)
-- Infrastructure directory already existed
-- Created AuthStateGenerator and ReportGenerator subdirectories under Infrastructure
-- Created .auth directory at root level
-- Created initial project files for AuthStateGenerator and ReportGenerator
-- Added new projects to solution file
-- No runsettings.xml file found to remove
-- Pipeline YAML files were already in correct location (pipeline/stages)
+5. **GitHubDashboardPage Creation** [Ref: Step 4]
+   - Create new file in Pages/UI
+   - Implement page locators and assertions
+   - Status: Completed
+   - Notes: Created GitHubDashboardPage with Playwright locators and assertions, including navigation, verification, and helper methods.
+
+6. **SampleTest Refactoring** [Ref: Step 5]
+   - Update using directives
+   - Remove unnecessary tests
+   - Refactor BaseTestInitialize
+   - Update CreateRepoAndVerifyInUI test
+   - Status: Completed
+   - Notes: Successfully refactored SampleTest.cs to use new page objects, removed login tests, and implemented a clean API+UI test for repository creation.
+
+7. **TestBase Class Updates** [Ref: Step 5]
+   - Move AuthHelper initialization
+   - Update constructor
+   - Status: Completed
+   - Notes: Successfully moved AuthHelper initialization to BaseTestInitialize method and cleaned up the constructor to only initialize essential components.
+
+8. **Cleanup Tasks** [Ref: Steps 6-7]
+   - Remove Pages/User.cs - Status: Completed (file not found, already using correct model)
+   - Update LoginPage class references - Status: Completed
+   - Remove unused code - Status: Completed
+   - Update namespaces and using directives - Status: Completed
+   - Overall Status: Completed
+   - Notes: Updated LoginPage.cs with proper namespace, fixed method names for consistency, and verified User model references.
+
+## Final Steps
+9. **Build and Test** [Ref: Step 8]
+   - Run dotnet clean
+   - Run dotnet restore
+   - Run dotnet build
+   - Run dotnet test
+   - Status: Pending
 
 ## Implementation Notes
-
-- Each task should be implemented sequentially as they may have dependencies on previous tasks
-- Verify each task thoroughly before marking as Completed
-- Add implementation notes and any important observations under Progress Updates when completing a task
-
-## Final Checklist
-
-- [ ] All tasks marked as Completed
-- [ ] All code changes tested and verified
-- [ ] Documentation updated
-- [ ] Pipeline running successfully
-- [ ] No remaining deprecated code 
+- Each task will be implemented sequentially to maintain code stability
+- Status will be updated to "In Progress" when implementation begins
+- Status will be updated to "Completed" with implementation notes when finished
+- Any blockers or issues will be noted in the respective task 

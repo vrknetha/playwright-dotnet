@@ -5,14 +5,15 @@ using NUnit.Framework;
 using PlaywrightDemo.Infrastructure.Config;
 using PlaywrightDemo.Infrastructure.Config.Models;
 using PlaywrightDemo.Infrastructure.Logging;
+using PlaywrightDemo.Infrastructure.Base;
 
 namespace PlaywrightDemo.Pages;
 
 public abstract class BasePage : PageTest
 {
     protected readonly IPage Page;
-    protected readonly ILogger Logger;
     protected readonly TestSettings Settings;
+    protected readonly ILogger Logger;
 
     protected BasePage(IPage page)
     {

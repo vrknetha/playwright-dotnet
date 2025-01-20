@@ -34,7 +34,24 @@ public static class TestReportManager
         htmlReporter.Config.DocumentTitle = "Test Execution Report";
         htmlReporter.Config.ReportName = "Playwright Test Results";
         htmlReporter.Config.Theme = AventStack.ExtentReports.Reporter.Configuration.Theme.Standard;
-        htmlReporter.Config.CSS = AttachmentHelper.GetReportStyles();
+
+        // Add custom logo
+        htmlReporter.Config.JS = "document.getElementsByClassName('logo')[0].style.display='none';"; // Hide default logo
+        htmlReporter.Config.CSS = @"
+            .nav-wrapper { padding-left: 20px; }
+            .nav-wrapper:before {
+                content: '';
+                display: block;
+                position: absolute;
+                top: 10px;
+                left: 20px;
+                width: 150px;
+                height: 50px;
+                background: url('https://caw.tech/wp-content/uploads/2024/11/output-onlinegiftools.gif') no-repeat;
+                background-size: contain;
+            }
+            " + htmlReporter.Config.CSS; // Append to existing CSS
+
         htmlReporter.Config.EnableTimeline = true;
 
         // Get Playwright version

@@ -20,26 +20,22 @@ public static class ApiContextManager
     /// <summary>
     /// Initializes a new API context with the specified settings.
     /// </summary>
-    public static async Task InitializeAsync(IPlaywright playwright, TestSettings settings)
+    public static async Task<IAPIRequestContext> InitializeAsync(IPlaywright playwright, TestSettings settings, string? authStatePath = null)
     {
-        if (_currentContext != null)
+        var options = new APIRequestNewContextOptions
         {
-            await _currentContext.DisposeAsync();
+            BaseURL = settings.Environment.ApiBaseUrl,
+            IgnoreHTTPSErrors = true
+        };
+
+        // If auth state exists, load it
+        if (!string.IsNullOrEmpty(authStatePath))
+        {
+            options.StorageStatePath = authStatePath;
         }
 
-        if (!string.IsNullOrEmpty(settings.Environment.ApiBaseUrl))
-        {
-            var baseUrl = settings.Environment.ApiBaseUrl;
-            _currentContext = await playwright.APIRequest.NewContextAsync(new()
-            {
-                BaseURL = baseUrl,
-                IgnoreHTTPSErrors = true,
-                ExtraHTTPHeaders = new Dictionary<string, string>
-                {
-                    { "Accept", "*/*" }
-                }
-            });
-        }
+        var apiContext = await playwright.APIRequest.NewContextAsync(options);
+        return apiContext;
     }
 
     /// <summary>

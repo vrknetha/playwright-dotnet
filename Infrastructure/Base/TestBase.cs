@@ -14,6 +14,8 @@ using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Binder;
+using PlaywrightDemo.Infrastructure.TestData;
+using PlaywrightDemo.Infrastructure.TestData.Models;
 
 namespace PlaywrightDemo.Infrastructure.Base;
 
@@ -24,13 +26,18 @@ public class TestBase : IAsyncDisposable
     protected IBrowser Browser { get; private set; } = null!;
     protected ILogger Logger { get; }
     protected IPage Page { get; private set; } = null!;
+    protected IAPIRequestContext ApiContext { get; private set; } = null!;
     private IPlaywright _playwright = null!;
     protected ExtentTest TestReport { get; private set; } = null!;
     private DateTime _testStartTime;
     private TraceManager _traceManager = null!;
     protected TestSettings Settings { get; }
-    protected AuthHelper AuthHelper { get; }
+    protected AuthHelper? AuthHelper { get; private set; }
     protected string? AuthStateToUse { get; set; }
+    protected IUserData UserDataHelper { get; }
+    public static TestLogger TestLogger { get; private set; } = null!;
+    protected string SessionStoragePath => Configuration["SessionStoragePath"];
+    protected IConfiguration Configuration { get; }
 
     public TestBase()
     {
@@ -47,15 +54,17 @@ public class TestBase : IAsyncDisposable
         ConfigurationLoader.Initialize(Logger);
         Settings = ConfigurationLoader.GetSettings<TestSettings>();
 
-        // Initialize AuthHelper
-        AuthHelper = new AuthHelper();
+        // Initialize UserDataHelper
+        UserDataHelper = new UserDataGenerator();
+
+        // Initialize Configuration
+        Configuration = ConfigurationLoader.LoadConfiguration();
     }
 
-    protected string GetAuthStatePath()
+    public static string GetAuthStatePath()
     {
-        // Get the project root directory
         var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        return Path.Combine(projectRoot, "playwright", ".auth");
+        return Path.Combine(projectRoot, ".auth");
     }
 
     private string GetProjectRoot()
@@ -103,6 +112,7 @@ public class TestBase : IAsyncDisposable
 
         // Initialize test reporting
         TestReport = TestReportManager.CreateTest(testName);
+        TestLogger = new TestLogger(Logger, TestReport);
         TestMetricsManager.InitializeTest(testName);
 
         // Initialize Playwright
@@ -142,12 +152,14 @@ public class TestBase : IAsyncDisposable
             };
         }
 
-        // Apply auth state if specified
+        // Initialize and verify auth state if specified
         if (!string.IsNullOrEmpty(AuthStateToUse))
         {
             try
             {
+                AuthHelper = new AuthHelper();
                 var authStatePath = Path.Combine(GetAuthStatePath(), AuthStateToUse);
+
                 if (await AuthHelper.VerifyAuthStateAsync(authStatePath))
                 {
                     LogInfo($"Using authentication state: {AuthStateToUse}");
@@ -182,7 +194,10 @@ public class TestBase : IAsyncDisposable
         // Initialize API context if needed
         if (!string.IsNullOrEmpty(Settings.Environment.ApiBaseUrl))
         {
-            await ApiContextManager.InitializeAsync(_playwright, Settings);
+            var authStatePath = !string.IsNullOrEmpty(AuthStateToUse)
+                ? Path.Combine(GetAuthStatePath(), AuthStateToUse)
+                : null;
+            ApiContext = await ApiContextManager.InitializeAsync(_playwright, Settings, authStatePath);
         }
     }
 
@@ -354,7 +369,10 @@ public class TestBase : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await AuthHelper.DisposeAsync();
+        if (AuthHelper != null)
+        {
+            await AuthHelper.DisposeAsync();
+        }
     }
 
     protected void LogInfo(string message)
