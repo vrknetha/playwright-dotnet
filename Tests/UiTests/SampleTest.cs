@@ -18,10 +18,8 @@ public class SampleTest : TestBase
 {
     private GitHubDashboardPage _dashboardPage = null!;
 
-    [SetUp]
     public override async Task BaseTestInitialize()
     {
-        // AuthStateToUse = "AniketSelokar-CawTech_state.json";
         await base.BaseTestInitialize();
         _dashboardPage = new GitHubDashboardPage(Page);
         // log

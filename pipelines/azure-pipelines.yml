@@ -1,5 +1,267 @@
 # ... previous stages remain the same ...
 
+parameters:
+  - name: shardCount
+    type: number
+    default: 5
+    displayName: 'Number of Shards'
+  - name: performMetricsCleanup
+    type: boolean
+    default: false
+    displayName: 'Perform Metrics Cleanup'
+
+variables:
+  METRICS_ARTIFACT_NAME: 'test-metrics-history'
+  METRICS_LOCK_TIMEOUT: '300' # 5 minutes in seconds
+
+jobs:
+- job: MetricsCleanup
+  condition: eq('${{ parameters.performMetricsCleanup }}', true)
+  displayName: 'Cleanup Test Metrics'
+  steps:
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download Metrics History'
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProject)'
+      pipeline: '$(System.DefinitionId)'
+      runVersion: 'latest'
+      artifact: '$(METRICS_ARTIFACT_NAME)'
+      path: '$(Build.SourcesDirectory)/TestResults'
+    continueOnError: true
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Run Metrics Cleanup'
+    inputs:
+      command: 'test'
+      projects: '**/*.csproj'
+      arguments: '--filter "TestCategory=MetricsCleanup"'
+      testRunTitle: 'Metrics Cleanup'
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish Updated Metrics'
+    inputs:
+      targetPath: '$(Build.SourcesDirectory)/TestResults/metrics_history.json'
+      artifact: '$(METRICS_ARTIFACT_NAME)'
+    condition: succeededOrFailed()
+
+- job: TestShard
+  dependsOn: MetricsCleanup
+  condition: in(dependencies.MetricsCleanup.result, 'Succeeded', 'Skipped')
+  strategy:
+    matrix: $[ convertToJson(range(0, parameters.shardCount)) ]
+  timeoutInMinutes: 60 # Prevent hanging jobs
+  variables:
+    TEST_TOTAL_SHARDS: ${{ parameters.shardCount }}
+    TEST_SHARD_INDEX: $(System.JobPositionInPhase)
+    
+  steps:
+  # Attempt to acquire metrics lock
+  - task: PowerShell@2
+    displayName: 'Acquire Metrics Lock'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $maxAttempts = 5
+        $attempt = 1
+        $delay = 10
+        
+        while ($attempt -le $maxAttempts) {
+          try {
+            $lockFile = "$(Build.SourcesDirectory)/TestResults/metrics.lock"
+            if (Test-Path $lockFile) {
+              $lockContent = Get-Content $lockFile | ConvertFrom-Json
+              $lockAge = [DateTime]::UtcNow - [DateTime]::Parse($lockContent.Timestamp)
+              
+              if ($lockAge.TotalSeconds -gt $env:METRICS_LOCK_TIMEOUT) {
+                Remove-Item $lockFile -Force
+              } else {
+                Write-Host "Lock held by build $($lockContent.BuildId) on $($lockContent.MachineName)"
+                Start-Sleep -Seconds $delay
+                $attempt++
+                $delay *= 2
+                continue
+              }
+            }
+            
+            $lockInfo = @{
+              BuildId = $env:BUILD_BUILDID
+              MachineName = $env:COMPUTERNAME
+              Timestamp = [DateTime]::UtcNow.ToString('o')
+            } | ConvertTo-Json
+            
+            $lockInfo | Set-Content $lockFile
+            Write-Host "Lock acquired"
+            break
+          }
+          catch {
+            Write-Warning "Failed to acquire lock: $_"
+            Start-Sleep -Seconds $delay
+            $attempt++
+            $delay *= 2
+          }
+        }
+        
+        if ($attempt -gt $maxAttempts) {
+          Write-Error "Failed to acquire metrics lock after $maxAttempts attempts"
+          exit 1
+        }
+
+  # Download metrics history
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download Metrics History'
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProject)'
+      pipeline: '$(System.DefinitionId)'
+      runVersion: 'latest'
+      artifact: '$(METRICS_ARTIFACT_NAME)'
+      path: '$(Build.SourcesDirectory)/TestResults'
+    continueOnError: true
+
+  # Run tests with retry for flaky tests
+  - task: DotNetCoreCLI@2
+    displayName: 'Run Tests'
+    inputs:
+      command: 'test'
+      projects: '**/*.csproj'
+      arguments: '--logger trx --results-directory "$(Build.SourcesDirectory)/TestResults"'
+    retryCountOnTaskFailure: 2
+
+  # Release metrics lock
+  - task: PowerShell@2
+    displayName: 'Release Metrics Lock'
+    condition: always()
+    inputs:
+      targetType: 'inline'
+      script: |
+        $lockFile = "$(Build.SourcesDirectory)/TestResults/metrics.lock"
+        if (Test-Path $lockFile) {
+          try {
+            $lockContent = Get-Content $lockFile | ConvertFrom-Json
+            if ($lockContent.BuildId -eq $env:BUILD_BUILDID) {
+              Remove-Item $lockFile -Force
+              Write-Host "Lock released"
+            }
+          }
+          catch {
+            Write-Warning "Failed to release lock: $_"
+          }
+        }
+
+  # Publish metrics
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish Metrics'
+    inputs:
+      targetPath: '$(Build.SourcesDirectory)/TestResults/metrics_history.json'
+      artifact: '$(METRICS_ARTIFACT_NAME)'
+    condition: succeededOrFailed()
+
+  # Analyze distribution
+  - task: PowerShell@2
+    displayName: 'Analyze Shard Distribution'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $metricsFile = "$(Build.SourcesDirectory)/TestResults/metrics_history.json"
+        if (Test-Path $metricsFile) {
+          $metrics = Get-Content $metricsFile | ConvertFrom-Json
+          $totalShards = [int]$env:TEST_TOTAL_SHARDS
+          
+          # Get list of executed tests from test results
+          $testResults = Get-ChildItem -Path "$(Build.SourcesDirectory)/TestResults" -Filter "*.trx" -Recurse | 
+            ForEach-Object { ([xml](Get-Content $_.FullName)).TestRun.Results.UnitTestResult } |
+            Select-Object -ExpandProperty testName
+          
+          # Calculate statistics per shard for executed tests only
+          $shardStats = @{}
+          foreach ($test in $metrics.PSObject.Properties) {
+            # Skip if test wasn't executed in this run
+            if ($testResults -notcontains $test.Name) {
+              continue
+            }
+            
+            $lastRun = $test.Value | Sort-Object EndTime -Descending | Select-Object -First 1
+            $shardIndex = [Math]::Floor($test.Name.GetHashCode() % $totalShards)
+            
+            if (-not $shardStats.ContainsKey($shardIndex)) {
+              $shardStats[$shardIndex] = @{
+                TotalTests = 0
+                TotalDuration = 0
+                Tests = @()
+                FailedTests = @()
+              }
+            }
+            
+            $shardStats[$shardIndex].TotalTests++
+            $shardStats[$shardIndex].TotalDuration += $lastRun.Duration
+            
+            if ($lastRun.Passed) {
+              $shardStats[$shardIndex].Tests += @{
+                Name = $test.Name
+                Duration = $lastRun.Duration
+              }
+            } else {
+              $shardStats[$shardIndex].FailedTests += @{
+                Name = $test.Name
+                Duration = $lastRun.Duration
+                Error = $lastRun.ErrorMessage
+              }
+            }
+          }
+          
+          # Calculate distribution metrics
+          $totalTests = ($shardStats.Values | Measure-Object -Property TotalTests -Sum).Sum
+          $totalDuration = ($shardStats.Values | Measure-Object -Property TotalDuration -Sum).Sum
+          $avgDuration = if ($totalShards -gt 0) { $totalDuration / $totalShards } else { 0 }
+          $maxDeviation = ($shardStats.Values | ForEach-Object { [Math]::Abs($_.TotalDuration - $avgDuration) } | Measure-Object -Maximum).Maximum
+          $deviationPercent = if ($avgDuration -gt 0) { ($maxDeviation / $avgDuration) * 100 } else { 0 }
+          
+          # Output distribution analysis
+          Write-Host "##[section]Shard Distribution Analysis (Filtered Run)"
+          Write-Host "Tests Executed: $totalTests"
+          Write-Host "Total Test Duration: $totalDuration seconds"
+          Write-Host "Average Duration per Shard: $avgDuration seconds"
+          Write-Host "Maximum Deviation: $maxDeviation seconds ($([Math]::Round($deviationPercent, 2))%)"
+          Write-Host ""
+          
+          foreach ($shard in $shardStats.Keys | Sort-Object) {
+            $stats = $shardStats[$shard]
+            $shardDeviation = if ($avgDuration -gt 0) { 
+              [Math]::Round([Math]::Abs($stats.TotalDuration - $avgDuration) / $avgDuration * 100, 2)
+            } else { 0 }
+            
+            Write-Host "Shard $shard:"
+            Write-Host "  Total Tests: $($stats.TotalTests)"
+            Write-Host "  Total Duration: $($stats.TotalDuration) seconds"
+            Write-Host "  Deviation from Average: $shardDeviation%"
+            
+            if ($stats.FailedTests.Count -gt 0) {
+              Write-Host "  Failed Tests:"
+              $stats.FailedTests | ForEach-Object {
+                Write-Host "    - $($_.Name): $($_.Duration) seconds"
+                Write-Host "      Error: $($_.Error)"
+              }
+            }
+            
+            Write-Host "  Passed Tests:"
+            $stats.Tests | Sort-Object Duration -Descending | ForEach-Object {
+              Write-Host "    - $($_.Name): $($_.Duration) seconds"
+            }
+            Write-Host ""
+          }
+          
+          # Set pipeline variables for monitoring
+          Write-Host "##vso[task.setvariable variable=ShardBalanceDeviation;isOutput=true]$([Math]::Round($deviationPercent, 2))"
+          Write-Host "##vso[task.setvariable variable=ExecutedTestCount;isOutput=true]$totalTests"
+          
+          # Alert if deviation is too high
+          if ($deviationPercent -gt 30) {
+            Write-Host "##vso[task.logissue type=warning]Shard distribution deviation exceeds 30%"
+          }
+        }
+    condition: succeededOrFailed()
+
 - stage: Notifications
   displayName: 'Send Notifications'
   dependsOn: RunTests

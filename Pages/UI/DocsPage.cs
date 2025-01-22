@@ -1,23 +1,31 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 
-namespace PlaywrightDemo.Pages;
+namespace PlaywrightDemo.Pages.UI;
 
-public class HomePage : BasePage
+public class DocsPage : BasePage
 {
     // Locators
-    private ILocator GetStartedButton => Page.GetByRole(AriaRole.Link, new() { Name = "Get Started" });
-    private ILocator SearchButton => Page.GetByRole(AriaRole.Button, new() { Name = "Search" });
+    private ILocator InstallationHeading => Page.GetByRole(AriaRole.Heading, new() { Name = "Installation" });
+    private ILocator ApiDocsLink => Page.GetByRole(AriaRole.Link, new() { Name = "API" });
     private ILocator SearchInput => Page.GetByPlaceholder("Search");
 
-    public HomePage(IPage page) : base(page) { }
+    public DocsPage(IPage page) : base(page) { }
 
     public async Task NavigateAsync()
     {
-        Logger.LogInformation("Navigating to homepage");
-        await Page.GotoAsync(Settings.Environment.BaseUrl);
+        Logger.LogInformation("Navigating to documentation page");
+        await Page.GotoAsync(BuildUrl("/docs/intro"));
         await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        Logger.LogInformation("Homepage loaded successfully");
+        Logger.LogInformation("Documentation page loaded successfully");
+    }
+
+    public async Task NavigateToApiDocsAsync()
+    {
+        Logger.LogInformation("Navigating to API documentation");
+        await Page.GotoAsync(BuildUrl("/docs/api/class-playwright"));
+        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        Logger.LogInformation("API documentation page loaded successfully");
     }
 
     public async Task<string> GetTitleAsync()
@@ -27,27 +35,19 @@ public class HomePage : BasePage
         return title;
     }
 
-    public async Task ClickGetStartedAsync()
+    public async Task<string> GetInstallationHeadingTextAsync()
     {
-        Logger.LogInformation("Clicking 'Get Started' button");
-        await GetStartedButton.WaitForAsync();
-        await GetStartedButton.ClickAsync();
-        await Page.WaitForURLAsync("**/docs/intro");
-        Logger.LogInformation("Navigated to documentation page");
-    }
-
-    public async Task OpenSearchAsync()
-    {
-        Logger.LogInformation("Opening search dialog");
-        await Page.Keyboard.PressAsync("Control+k");
-        await SearchInput.WaitForAsync();
-        Logger.LogInformation("Search dialog opened");
+        await InstallationHeading.WaitForAsync();
+        var text = await InstallationHeading.TextContentAsync();
+        Logger.LogInformation("Retrieved installation heading text: {Text}", text);
+        return text ?? string.Empty;
     }
 
     public async Task SearchAsync(string query)
     {
         Logger.LogInformation("Performing search for: {Query}", query);
-        await OpenSearchAsync();
+        await Page.Keyboard.PressAsync("Control+k");
+        await SearchInput.WaitForAsync();
         await SearchInput.FillAsync(query);
         await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
         Logger.LogInformation("Search completed");

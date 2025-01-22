@@ -2,6 +2,8 @@ using System.Text;
 using System.Web;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
+using System.Text.Json;
+using System.Collections.Concurrent;
 
 namespace PlaywrightDemo.Infrastructure.Reporting;
 
@@ -20,31 +22,209 @@ public class TestExecutionMetric
     public DateTime EndTime { get; set; }
 }
 
+// Custom thread-safe HashSet implementation
+public class ConcurrentHashSet<T> : ConcurrentDictionary<T, byte>
+{
+    public bool Add(T item) => TryAdd(item, 0);
+    public bool Remove(T item) => TryRemove(item, out _);
+    public bool Contains(T item) => ContainsKey(item);
+}
+
 public static class TestMetricsManager
 {
-    private static readonly Dictionary<string, List<TestExecutionMetric>> _testMetrics = new();
-    private static readonly Dictionary<string, DateTime> _testStartTimes = new();
+    private static readonly ConcurrentDictionary<string, List<TestExecutionMetric>> _testMetrics = new();
+    private static readonly ConcurrentDictionary<string, DateTime> _testStartTimes = new();
+    private static readonly ConcurrentHashSet<string> _executedTestsInCurrentRun = new();
+    private const string METRICS_FILE = "TestResults/metrics_history.json";
+    private const string METRICS_LOCK_FILE = "TestResults/metrics.lock";
+    private static readonly SemaphoreSlim _metricsSemaphore = new(1, 1);
+    private static readonly TimeSpan LOCK_TIMEOUT = TimeSpan.FromMinutes(5);
 
-    public static void InitializeTest(string testName)
+    static TestMetricsManager()
     {
-        if (_testMetrics.ContainsKey(testName))
-        {
-            _testMetrics[testName].Clear();
-        }
-        else
-        {
-            _testMetrics[testName] = new List<TestExecutionMetric>();
-        }
-
-        _testStartTimes[testName] = DateTime.Now;
+        InitializeMetrics();
     }
 
-    public static void RecordTestResult(string testName, TimeSpan duration, bool passed, string failureStep, string category)
+    private static void InitializeMetrics()
+    {
+        try
+        {
+            // Ensure directories exist
+            Directory.CreateDirectory(Path.GetDirectoryName(METRICS_FILE)!);
+
+            // Initial load with retry logic
+            var retryCount = 3;
+            var delay = TimeSpan.FromSeconds(1);
+
+            while (retryCount > 0)
+            {
+                try
+                {
+                    LoadMetricsHistory();
+                    break;
+                }
+                catch (Exception ex) when (retryCount > 1)
+                {
+                    TestContext.WriteLine($"Retry {4 - retryCount}/3: Failed to load metrics: {ex.Message}");
+                    Thread.Sleep(delay);
+                    delay = TimeSpan.FromSeconds(delay.TotalSeconds * 2); // Exponential backoff
+                    retryCount--;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            TestContext.WriteLine($"Failed to initialize metrics after retries: {ex.Message}");
+            // Continue with empty metrics rather than failing the test run
+            _testMetrics.Clear();
+        }
+    }
+
+    private static async Task<bool> AcquireFileLockAsync()
+    {
+        try
+        {
+            if (!await _metricsSemaphore.WaitAsync(LOCK_TIMEOUT))
+            {
+                TestContext.WriteLine("Warning: Timeout waiting for metrics lock");
+                return false;
+            }
+
+            var lockPath = METRICS_LOCK_FILE;
+            var lockInfo = new
+            {
+                MachineName = Environment.MachineName,
+                ProcessId = Environment.ProcessId,
+                Timestamp = DateTime.UtcNow,
+                BuildId = Environment.GetEnvironmentVariable("BUILD_BUILDID") ?? "local"
+            };
+
+            File.WriteAllText(lockPath, JsonSerializer.Serialize(lockInfo));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            TestContext.WriteLine($"Warning: Failed to acquire file lock: {ex.Message}");
+            return false;
+        }
+    }
+
+    private static void ReleaseFileLock()
+    {
+        try
+        {
+            if (File.Exists(METRICS_LOCK_FILE))
+            {
+                File.Delete(METRICS_LOCK_FILE);
+            }
+            _metricsSemaphore.Release();
+        }
+        catch (Exception ex)
+        {
+            TestContext.WriteLine($"Warning: Failed to release file lock: {ex.Message}");
+        }
+    }
+
+    private static async Task SaveMetricsHistoryAsync()
+    {
+        if (!await AcquireFileLockAsync())
+        {
+            TestContext.WriteLine("Warning: Skipping metrics save due to lock acquisition failure");
+            return;
+        }
+
+        try
+        {
+            var updatedMetrics = new ConcurrentDictionary<string, List<TestExecutionMetric>>();
+
+            // Process executed tests first
+            foreach (var testName in _executedTestsInCurrentRun.Keys)
+            {
+                if (_testMetrics.TryGetValue(testName, out var metrics))
+                {
+                    updatedMetrics[testName] = metrics
+                        .OrderByDescending(m => m.EndTime)
+                        .Take(10)
+                        .ToList();
+                }
+            }
+
+            // Add non-executed tests
+            foreach (var kvp in _testMetrics)
+            {
+                if (!_executedTestsInCurrentRun.ContainsKey(kvp.Key))
+                {
+                    updatedMetrics[kvp.Key] = kvp.Value;
+                }
+            }
+
+            // Create backup before saving
+            if (File.Exists(METRICS_FILE))
+            {
+                File.Copy(METRICS_FILE, $"{METRICS_FILE}.bak", true);
+            }
+
+            var json = JsonSerializer.Serialize(updatedMetrics, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            await File.WriteAllTextAsync(METRICS_FILE, json);
+
+            // Clean up backup after successful save
+            if (File.Exists($"{METRICS_FILE}.bak"))
+            {
+                File.Delete($"{METRICS_FILE}.bak");
+            }
+        }
+        catch (Exception ex)
+        {
+            TestContext.WriteLine($"Warning: Failed to save metrics: {ex.Message}");
+
+            // Attempt to restore from backup
+            if (File.Exists($"{METRICS_FILE}.bak"))
+            {
+                try
+                {
+                    File.Copy($"{METRICS_FILE}.bak", METRICS_FILE, true);
+                    TestContext.WriteLine("Restored metrics from backup");
+                }
+                catch
+                {
+                    TestContext.WriteLine("Failed to restore metrics from backup");
+                }
+            }
+        }
+        finally
+        {
+            ReleaseFileLock();
+        }
+    }
+
+    public static async Task RecordTestResultAsync(string testName, TimeSpan duration, bool passed, string failureStep, string category)
+    {
+        var metric = CreateTestMetric(testName, duration, passed, failureStep, category);
+
+        _testMetrics.AddOrUpdate(
+            testName,
+            new List<TestExecutionMetric> { metric },
+            (_, existing) =>
+            {
+                var updated = new List<TestExecutionMetric>(existing) { metric };
+                return updated.OrderByDescending(m => m.EndTime).Take(10).ToList();
+            }
+        );
+
+        _testStartTimes.TryRemove(testName, out _);
+        await SaveMetricsHistoryAsync();
+    }
+
+    private static TestExecutionMetric CreateTestMetric(string testName, TimeSpan duration, bool passed, string failureStep, string category)
     {
         var currentTest = TestContext.CurrentContext.Test;
         var result = TestContext.CurrentContext.Result;
 
-        var metric = new TestExecutionMetric
+        return new TestExecutionMetric
         {
             TestName = testName,
             Duration = duration,
@@ -58,15 +238,12 @@ public static class TestMetricsManager
             StartTime = _testStartTimes.GetValueOrDefault(testName, DateTime.Now.AddSeconds(-duration.TotalSeconds)),
             EndTime = DateTime.Now
         };
+    }
 
-        if (!_testMetrics.ContainsKey(testName))
-        {
-            _testMetrics[testName] = new List<TestExecutionMetric>();
-        }
-        _testMetrics[testName].Add(metric);
-
-        // Clean up start time
-        _testStartTimes.Remove(testName);
+    public static void InitializeTest(string testName)
+    {
+        _executedTestsInCurrentRun.Add(testName);
+        _testStartTimes[testName] = DateTime.Now;
     }
 
     public static string GenerateMetricsReport()
@@ -189,9 +366,137 @@ public static class TestMetricsManager
             : new List<TestExecutionMetric>().AsReadOnly();
     }
 
+    public static IReadOnlyDictionary<string, List<TestExecutionMetric>> GetAllTestMetrics()
+    {
+        return _testMetrics.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.ToList()
+        );
+    }
+
+    public static IReadOnlyDictionary<string, List<TestExecutionMetric>> GetExecutedTestMetrics()
+    {
+        return _testMetrics
+            .Where(kvp => _executedTestsInCurrentRun.Contains(kvp.Key))
+            .ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.ToList()
+            );
+    }
+
     public static void ClearMetrics()
     {
-        _testMetrics.Clear();
-        _testStartTimes.Clear();
+        _metricsSemaphore.Wait();
+        try
+        {
+            _testMetrics.Clear();
+            _testStartTimes.Clear();
+            _executedTestsInCurrentRun.Clear();
+            if (File.Exists(METRICS_FILE))
+            {
+                File.Delete(METRICS_FILE);
+            }
+            if (File.Exists(METRICS_LOCK_FILE))
+            {
+                File.Delete(METRICS_LOCK_FILE);
+            }
+        }
+        finally
+        {
+            _metricsSemaphore.Release();
+        }
+    }
+
+    public static void PruneMetricsHistory(int daysToKeep = 30)
+    {
+        var cutoffDate = DateTime.Now.AddDays(-daysToKeep);
+        var modified = false;
+
+        foreach (var metrics in _testMetrics.Values)
+        {
+            var oldCount = metrics.Count;
+            metrics.RemoveAll(m => m.EndTime < cutoffDate);
+            if (metrics.Count != oldCount)
+            {
+                modified = true;
+            }
+        }
+
+        if (modified)
+        {
+            SaveMetricsHistoryAsync().GetAwaiter().GetResult();
+        }
+    }
+
+    private static void LoadMetricsHistory()
+    {
+        if (!File.Exists(METRICS_FILE)) return;
+
+        var json = File.ReadAllText(METRICS_FILE);
+        var metrics = JsonSerializer.Deserialize<Dictionary<string, List<TestExecutionMetric>>>(json);
+        if (metrics == null) return;
+
+        foreach (var kvp in metrics)
+        {
+            _testMetrics[kvp.Key] = kvp.Value;
+        }
+    }
+
+    public static string GetMetricsFilePath() => METRICS_FILE;
+
+    public static async Task PruneMetricsHistoryAsync(int daysToKeep = 30)
+    {
+        var cutoffDate = DateTime.Now.AddDays(-daysToKeep);
+        var modified = false;
+
+        foreach (var metrics in _testMetrics.Values)
+        {
+            var oldCount = metrics.Count;
+            metrics.RemoveAll(m => m.EndTime < cutoffDate);
+            if (metrics.Count != oldCount)
+            {
+                modified = true;
+            }
+        }
+
+        if (modified)
+        {
+            await SaveMetricsHistoryAsync();
+        }
+    }
+
+    public static async Task<IReadOnlyDictionary<string, List<TestExecutionMetric>>> GetAllTestMetricsAsync()
+    {
+        return await Task.FromResult(_testMetrics.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.ToList()
+        ));
+    }
+
+    public static async Task SaveMetricsAsync(IDictionary<string, List<TestExecutionMetric>> metrics)
+    {
+        if (!await AcquireFileLockAsync())
+        {
+            TestContext.WriteLine("Warning: Skipping metrics save due to lock acquisition failure");
+            return;
+        }
+
+        try
+        {
+            foreach (var kvp in metrics)
+            {
+                _testMetrics.AddOrUpdate(
+                    kvp.Key,
+                    kvp.Value,
+                    (_, _) => kvp.Value
+                );
+            }
+
+            await SaveMetricsHistoryAsync();
+        }
+        finally
+        {
+            ReleaseFileLock();
+        }
     }
 }

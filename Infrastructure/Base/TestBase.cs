@@ -107,13 +107,20 @@ public class TestBase : IAsyncDisposable
     [SetUp]
     public virtual async Task BaseTestInitialize()
     {
-        var testName = TestContext.CurrentContext.Test.Name;
+        if (!TestSharding.ShardingStrategy.ShouldRunTest())
+        {
+            Assert.Ignore("Test not assigned to this shard");
+            return;
+        }
+
         _testStartTime = DateTime.Now;
+        TestMetricsManager.InitializeTest(TestContext.CurrentContext.Test.Name);
+
+        var testName = TestContext.CurrentContext.Test.Name;
 
         // Initialize test reporting
         TestReport = TestReportManager.CreateTest(testName);
         TestLogger = new TestLogger(Logger, TestReport);
-        TestMetricsManager.InitializeTest(testName);
 
         // Initialize Playwright
         _playwright = await Playwright.CreateAsync();
@@ -240,7 +247,7 @@ public class TestBase : IAsyncDisposable
             }
 
             // Record test result
-            TestMetricsManager.RecordTestResult(
+            await TestMetricsManager.RecordTestResultAsync(
                 TestContext.CurrentContext.Test.Name,
                 DateTime.Now - _testStartTime,
                 !testFailed,

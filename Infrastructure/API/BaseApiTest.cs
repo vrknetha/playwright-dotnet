@@ -24,6 +24,7 @@ public abstract class BaseApiTest : TestBase
     {
         await base.BaseTestInitialize();
         Logger.LogInformation("Starting API test: {TestName}", TestContext.CurrentContext.Test.Name);
+        // Add any API-specific initialization
     }
 
     [TearDown]

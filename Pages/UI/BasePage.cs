@@ -7,7 +7,7 @@ using PlaywrightDemo.Infrastructure.Config.Models;
 using PlaywrightDemo.Infrastructure.Logging;
 using PlaywrightDemo.Infrastructure.Base;
 
-namespace PlaywrightDemo.Pages;
+namespace PlaywrightDemo.Pages.UI;
 
 public abstract class BasePage : PageTest
 {

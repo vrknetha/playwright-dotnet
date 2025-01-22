@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using PlaywrightDemo.Infrastructure.Base;
 using PlaywrightDemo.Infrastructure.TestData.Models;
 using PlaywrightDemo.Infrastructure.Logging;
+using PlaywrightDemo.Pages.UI;
 
 namespace PlaywrightDemo.Pages.UI;
 
