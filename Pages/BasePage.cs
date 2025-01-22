@@ -11,7 +11,7 @@ namespace PlaywrightDemo.Pages;
 
 public abstract class BasePage : PageTest
 {
-    protected readonly IPage Page;
+    protected new IPage Page { get; }
     protected readonly TestSettings Settings;
     protected readonly ILogger Logger;
 

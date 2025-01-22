@@ -36,7 +36,7 @@ public class TestBase : IAsyncDisposable
     protected string? AuthStateToUse { get; set; }
     protected IUserData UserDataHelper { get; }
     public static TestLogger TestLogger { get; private set; } = null!;
-    protected string SessionStoragePath => Configuration["SessionStoragePath"];
+    protected string? SessionStoragePath => Configuration["SessionStoragePath"];
     protected IConfiguration Configuration { get; }
 
     public TestBase()
@@ -209,6 +209,22 @@ public class TestBase : IAsyncDisposable
 
         try
         {
+            // First: Handle all logs, test results, and error messages
+            // Add error details to report if test failed
+            if (testFailed)
+            {
+                var errorMessage = TestContext.CurrentContext.Result.Message;
+                var stackTrace = TestContext.CurrentContext.Result.StackTrace;
+                if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    TestReport?.Error($"Test Failed: {errorMessage}");
+                    if (!string.IsNullOrEmpty(stackTrace))
+                    {
+                        TestReport?.Error($"Stack Trace: {stackTrace}");
+                    }
+                }
+            }
+
             // Clean up API context if needed
             if (!string.IsNullOrEmpty(Settings.Environment.ApiBaseUrl))
             {
@@ -228,7 +244,7 @@ public class TestBase : IAsyncDisposable
                 TestContext.CurrentContext.Test.Name,
                 DateTime.Now - _testStartTime,
                 !testFailed,
-                testFailed ? TestContext.CurrentContext.Result.Message : "",
+                testFailed ? TestContext.CurrentContext.Result.Message ?? "Unknown failure" : "",
                 TestContext.CurrentContext.Test.Properties["Category"]?.Cast<string>().FirstOrDefault() ?? ""
             );
 
@@ -236,14 +252,14 @@ public class TestBase : IAsyncDisposable
             {
                 try
                 {
-                    // Save trace
+                    // First: Handle trace recording (before closing context)
                     var tracePath = await _traceManager.StopTracingAsync(testFailed);
                     if (!string.IsNullOrEmpty(tracePath))
                     {
                         TestReportManager.AddTestTrace(testName, tracePath);
                     }
 
-                    // Save video
+                    // Second: Handle video recording
                     if (Context != null && Settings.Reporting.Video.Enabled)
                     {
                         try
@@ -268,28 +284,14 @@ public class TestBase : IAsyncDisposable
                                     {
                                         try
                                         {
-                                            // First try to move the file
                                             File.Move(videoPath, destinationPath, true);
                                         }
                                         catch
                                         {
-                                            // If move fails, try to copy and then delete
                                             File.Copy(videoPath, destinationPath, true);
-                                            try
-                                            {
-                                                File.Delete(videoPath);
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                LogWarning($"Could not delete temporary video file: {ex.Message}");
-                                            }
+                                            try { File.Delete(videoPath); } catch { }
                                         }
-
                                         TestReportManager.AddTestVideo(testName, destinationPath);
-                                    }
-                                    else
-                                    {
-                                        LogWarning($"Video file not found at path: {videoPath}");
                                     }
                                 }
                             }
@@ -300,7 +302,7 @@ public class TestBase : IAsyncDisposable
                         }
                     }
 
-                    // Take screenshot on failure
+                    // Finally: Handle failure screenshots
                     if (testFailed)
                     {
                         var screenshotFileName = $"{testName}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
@@ -308,18 +310,6 @@ public class TestBase : IAsyncDisposable
                         Directory.CreateDirectory(Path.GetDirectoryName(screenshotPath)!);
                         await Page.ScreenshotAsync(new() { Path = screenshotPath, FullPage = true });
                         TestReportManager.AddTestScreenshot(testName, screenshotPath, "Failure Screenshot");
-
-                        // Add error details to report
-                        var errorMessage = TestContext.CurrentContext.Result.Message;
-                        var stackTrace = TestContext.CurrentContext.Result.StackTrace;
-                        if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            TestReport?.Error($"Test Failed: {errorMessage}");
-                            if (!string.IsNullOrEmpty(stackTrace))
-                            {
-                                TestReport?.Error($"Stack Trace: {stackTrace}");
-                            }
-                        }
                     }
                 }
                 catch (Exception ex)

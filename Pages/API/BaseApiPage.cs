@@ -15,7 +15,7 @@ public abstract class BaseApiPage : PageTest
 {
     protected readonly IAPIRequestContext ApiContext;
     protected readonly ILogger Logger;
-    protected readonly TestSettings Settings;
+    protected TestSettings Settings { get; }
 
     protected BaseApiPage(IAPIRequestContext apiContext)
     {

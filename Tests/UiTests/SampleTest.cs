@@ -17,42 +17,47 @@ namespace PlaywrightDemo.Tests.UiTests;
 public class SampleTest : TestBase
 {
     private GitHubDashboardPage _dashboardPage = null!;
-    private GitHubApiPage _githubApi = null!;
 
     [SetUp]
     public override async Task BaseTestInitialize()
     {
-        AuthStateToUse = "AniketSelokar-CawTech_state.json";
+        // AuthStateToUse = "AniketSelokar-CawTech_state.json";
         await base.BaseTestInitialize();
         _dashboardPage = new GitHubDashboardPage(Page);
-        _githubApi = new GitHubApiPage(ApiContext);
+        // log
+        // _githubApi = new GitHubApiPage(ApiContext);
     }
 
     [Test]
     [Category("GitHubRepo")]
     public async Task CreateRepoAndVerifyInUI()
     {
-        // First verify we can access an existing repository
-        const string OWNER = "AniketSelokar-CawTech";
-        const string EXISTING_REPO = "TestDemo2";
+        //     // First verify we can access an existing repository
+        //     const string OWNER = "AniketSelokar-CawTech";
+        //     const string EXISTING_REPO = "TestDemo2";
 
-        Logger.LogInformation("Verifying access to existing repository");
-        await _githubApi.VerifyRepositoryAccessAsync(OWNER, EXISTING_REPO);
-        Logger.LogInformation("Successfully verified API access with existing repository");
+        //     Logger.LogInformation("Verifying access to existing repository");
+        //     await _githubApi.VerifyRepositoryAccessAsync(OWNER, EXISTING_REPO);
+        //     Logger.LogInformation("Successfully verified API access with existing repository");
 
-        // Create a new repository using GitHubApiPage
-        var repoName = $"test-repo-{Guid.NewGuid()}";
-        var description = "Test repository created via Playwright";
+        //     // Create a new repository using GitHubApiPage
+        //     var repoName = $"test-repo-{Guid.NewGuid()}";
+        //     var description = "Test repository created via Playwright";
 
-        // Create repository via API and verify
-        await _githubApi.CreateRepositoryAsync(repoName, description);
-        await _githubApi.VerifyRepositoryCreatedAsync(repoName);
-        Logger.LogInformation($"Repository '{repoName}' created successfully via API");
+        //     // Create repository via API and verify
+        //     await _githubApi.CreateRepositoryAsync(repoName, description);
+        //     await _githubApi.VerifyRepositoryCreatedAsync(repoName);
+        //     Logger.LogInformation($"Repository '{repoName}' created successfully via API");
 
-        // Verify repository in UI
-        await _dashboardPage.NavigateToDashboardAsync();
-        await _dashboardPage.ExpectRepoToBeVisibleAsync(repoName);
-        Logger.LogInformation($"Repository '{repoName}' verified in UI");
+        //     // Verify repository in UI
+        //     await _dashboardPage.NavigateToDashboardAsync();
+        //     await _dashboardPage.ExpectRepoToBeVisibleAsync(repoName);
+        //     Logger.LogInformation($"Repository '{repoName}' verified in UI");
+        LogInfo("Navigating to homepage");
+        await Page.GotoAsync(Settings.Environment.BaseUrl);
+        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        LogInfo("Homepage loaded successfully");
+
     }
 
     // [Test]

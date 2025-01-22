@@ -17,11 +17,7 @@ namespace PlaywrightDemo.Infrastructure.API;
 public abstract class BaseApiTest : TestBase
 {
     protected HttpClient HttpClient { get; private set; } = null!;
-    protected TestSettings Settings { get; private set; } = null!;
-    protected ILogger Logger { get; private set; } = null!;
     protected string BaseUrl => GetBaseUrl();
-    protected IAPIRequestContext ApiContext { get; private set; } = null!;
-    private IPlaywright _playwright = null!;
 
     [SetUp]
     public override async Task BaseTestInitialize()
@@ -85,16 +81,5 @@ public abstract class BaseApiTest : TestBase
         }
 
         return apiBaseUrl;
-    }
-
-    private void InitializeLogger()
-    {
-        var factory = LoggerFactory.Create(builder =>
-        {
-            builder.AddTestContext(TestContext.CurrentContext);
-            builder.SetMinimumLevel(LogLevel.Information);
-        });
-
-        Logger = factory.CreateLogger(GetType());
     }
 }

@@ -177,9 +177,10 @@ public class AuthHelper
 
             _logger.LogInformation("Submitting login form for user: {Username}", username);
 
-            var navigationTask = page.WaitForNavigationAsync();
+            // Wait for navigation after clicking submit
+            var waitForUrlTask = page.WaitForURLAsync("**/*", new() { WaitUntil = WaitUntilState.NetworkIdle });
             await page.ClickAsync("button[type='submit']");
-            await navigationTask;
+            await waitForUrlTask;
 
             if (page.Url.Contains("/login"))
             {

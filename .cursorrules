@@ -67,7 +67,7 @@ playwright_assertions:
   - Expect(Locator).ToHaveValueAsync()                  # Input has a value
   - Expect(Locator).ToHaveValuesAsync()                 # Select has options selected
   - Expect(Page).ToHaveTitleAsync()                     # Page has a title
-  - Expect(Page).ToHaveURLAsync()                       # Page has a URL
+    - Expect(Page).ToHaveURLAsync()                       # Page has a URL
   - Expect(Response).ToBeOKAsync()                      # Response has an OK status
 
 # Best Practices for WaitForSelectorAsync
