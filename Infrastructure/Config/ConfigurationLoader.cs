@@ -26,18 +26,24 @@ public static class ConfigurationLoader
     {
         _logger = logger;
         LoadConfiguration();
+        ValidateConfiguration();
         LogConfigurationInfo();
     }
 
     public static IConfiguration LoadConfiguration()
     {
-        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
-
         var builder = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables();
+
+        _configuration = builder.Build();
+
+        // Get environment from config
+        var environment = _configuration.GetValue<string>("Environment:Name") ?? "Development";
+
+        // Load environment-specific settings
+        builder.AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true);
 
         _configuration = builder.Build();
         return _configuration;
@@ -99,16 +105,6 @@ public static class ConfigurationLoader
                 throw new InvalidOperationException($"Invalid Reporting:Trace:Mode value: {settings.Reporting.Trace.Mode}");
             }
         }
-    }
-
-    private static string GetEnvironment()
-    {
-        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-            ?? Environment.GetEnvironmentVariable("TEST_ENVIRONMENT")
-            ?? "Development";
-
-        _logger?.LogInformation("Using environment: {Environment}", environment);
-        return environment;
     }
 
     private static void LogConfigurationInfo()
