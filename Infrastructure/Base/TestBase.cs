@@ -107,12 +107,6 @@ public class TestBase : IAsyncDisposable
     [SetUp]
     public virtual async Task BaseTestInitialize()
     {
-        if (!TestSharding.ShardingStrategy.ShouldRunTest())
-        {
-            Assert.Ignore("Test not assigned to this shard");
-            return;
-        }
-
         _testStartTime = DateTime.Now;
         TestMetricsManager.InitializeTest(TestContext.CurrentContext.Test.Name);
 

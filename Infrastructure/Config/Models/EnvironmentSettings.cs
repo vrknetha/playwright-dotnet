@@ -5,5 +5,4 @@ public class EnvironmentSettings
     public string Name { get; set; } = "Development";
     public string BaseUrl { get; set; } = string.Empty;
     public string ApiBaseUrl { get; set; } = string.Empty;
-    public string ApiVersion { get; set; } = "2022-11-28";
 }

@@ -25,7 +25,6 @@ public class GitHubApiPage : BaseApiPage
         _defaultHeaders = new Dictionary<string, string>
         {
             ["Accept"] = "application/vnd.github.v3+json",
-            ["X-GitHub-Api-Version"] = Settings.Environment.ApiVersion ?? "2022-11-28"
         };
     }
 
