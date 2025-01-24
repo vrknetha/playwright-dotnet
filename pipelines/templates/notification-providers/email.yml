@@ -1,0 +1,49 @@
+parameters:
+  - name: environment
+    type: string
+  - name: status
+    type: string
+  - name: totalTests
+    type: string
+  - name: passedTests
+    type: string
+  - name: failedTests
+    type: string
+
+steps:
+  - task: PowerShell@2
+    displayName: 'Send Email Notification'
+    condition: always()
+    inputs:
+      targetType: 'inline'
+      script: |
+        $body = @"
+        <h2>Test Run Results - ${{ parameters.environment }}</h2>
+        <p>Build: $(Build.BuildNumber)</p>
+        
+        <h3>Summary</h3>
+        <ul>
+          <li>Environment: ${{ parameters.environment }}</li>
+          <li>Status: ${{ parameters.status }}</li>
+          <li>Total Tests: ${{ parameters.totalTests }}</li>
+          <li>Passed Tests: ${{ parameters.passedTests }}</li>
+          <li>Failed Tests: ${{ parameters.failedTests }}</li>
+        </ul>
+        
+        <p>
+          <a href="$(System.TeamFoundationCollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)">View Pipeline Results</a>
+        </p>
+        "@
+        
+        $emailParams = @{
+          To = "$(NotificationEmail)"
+          Subject = "[${{ parameters.environment }}] Test Run Results - $(Build.BuildNumber)"
+          Body = $body
+          BodyAsHtml = $true
+          SmtpServer = "$(SmtpServer)"
+          Port = "$(SmtpPort)"
+          UseSsl = $true
+          Credential = New-Object System.Management.Automation.PSCredential("$(SmtpUsername)", (ConvertTo-SecureString "$(SmtpPassword)" -AsPlainText -Force))
+        }
+        
+        Send-MailMessage @emailParams 

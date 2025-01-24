@@ -1,131 +1,247 @@
-# ... previous stages remain the same ...
-
 parameters:
-  - name: performMetricsCleanup
-    type: boolean
-    default: false
-    displayName: 'Perform Metrics Cleanup'
-  - name: workerCount
-    type: number
-    default: 4
-    displayName: 'Number of Parallel Workers'
-  - name: browser
+  - name: environment
+    displayName: 'Environment'
     type: string
-    default: ''  # Empty means use appsettings.json configuration
-    displayName: 'Browser to run tests (leave empty to use appsettings.json)'
+    default: Development
     values:
-      - ''        # Use appsettings.json
-      - chromium
-      - firefox
-      - webkit
-  - name: testFilter
+      - Development
+      - QA
+      - Staging
+      - Production
+  - name: testTags
+    displayName: 'Test Tags (e.g. smoke, smoke|api, cat==smoke||cat==api)'
     type: string
-    default: ''
-    displayName: 'Test Filter Expression'
-    # NUnit Filter Examples:
-    # TestCategory=Smoke                 -> Run smoke tests
-    # TestCategory=UI                    -> Run UI tests
-    # TestCategory=Smoke|TestCategory=UI -> Run smoke OR UI tests
-    # Name~Login                         -> Run tests with "Login" in name
-    # FullyQualifiedName~LoginTests      -> Run specific test class
-    # Priority=High                      -> Run high priority tests
-    # TestCategory=UI&Priority=High      -> Run high priority UI tests
-    #
-    # Playwright Filter Examples:
-    # TestCategory=Browser               -> Run browser tests
-    # TestCategory=API                   -> Run API tests
-    # TestCategory=Authentication        -> Run auth tests
-    # Browser=chromium                   -> Run tests for specific browser
-    # Project=LoginFeature              -> Run tests for specific feature
-  - name: headless
-    type: boolean
-    default: true
-    displayName: 'Run tests in headless mode'
+    default: ''  # Empty means run all tests
+  - name: numberOfWorkers
+    displayName: 'Number of Parallel Test Workers'
+    type: number
+    default: 5
+    values:
+      - 1
+      - 3
+      - 5
+      - 10
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+      - develop
+      - feature/*
+      - release/*
+    exclude:
+      - docs/*
+  paths:
+    include:
+      - '**'
+    exclude:
+      - '**/*.md'
+      - 'docs/*'
+      - '.gitignore'
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - '**'
+    exclude:
+      - '**/*.md'
+      - 'docs/*'
+      - '.gitignore'
+
+pool:
+  vmImage: 'windows-latest'
 
 variables:
-  METRICS_ARTIFACT_NAME: 'test-metrics-history'
-  METRICS_LOCK_TIMEOUT: '300' # 5 minutes in seconds
-  ${{ if ne(parameters.browser, '') }}:
-    BROWSER: ${{ parameters.browser }}  # Override only if specified
-  HEADED: ${{ if eq(parameters.headless, false) }}1${{ else }}0${{ end }}
+  - name: DOTNET_ENVIRONMENT
+    value: ${{ parameters.environment }}
+  - group: test-credentials-${{ parameters.environment }}
+  - name: testResultsDirectory
+    value: '$(Build.SourcesDirectory)/TestResults'
+  - name: buildConfiguration
+    value: 'Release'
+  - name: traceDirectory
+    value: '$(Build.SourcesDirectory)/playwright-traces'
+  - name: reportBaseUrl
+    value: '$(System.TeamFoundationCollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)'
+  - group: storage-credentials  # Contains: StorageAccount, StorageKey, StorageContainer
+  - name: blobBaseUrl
+    value: 'https://$(StorageAccount).blob.core.windows.net/$(StorageContainer)'
 
-jobs:
-- job: MetricsCleanup
-  condition: eq('${{ parameters.performMetricsCleanup }}', true)
-  displayName: 'Cleanup Test Metrics'
-  steps:
-  - task: DownloadPipelineArtifact@2
-    displayName: 'Download Metrics History'
+steps:
+  - task: UseDotNet@2
+    displayName: 'Setup .NET'
     inputs:
-      source: 'specific'
-      project: '$(System.TeamProject)'
-      pipeline: '$(System.DefinitionId)'
-      runVersion: 'latest'
-      artifact: '$(METRICS_ARTIFACT_NAME)'
-      path: '$(Build.SourcesDirectory)/TestResults'
-    continueOnError: true
-
+      version: '8.x'
+      
   - task: DotNetCoreCLI@2
-    displayName: 'Run Metrics Cleanup'
+    displayName: 'Restore NuGet packages'
     inputs:
-      command: 'test'
+      command: 'restore'
       projects: '**/*.csproj'
-      arguments: '--filter "TestCategory=MetricsCleanup"'
-      testRunTitle: 'Metrics Cleanup'
 
-  - task: PublishPipelineArtifact@1
-    displayName: 'Publish Updated Metrics'
-    inputs:
-      targetPath: '$(Build.SourcesDirectory)/TestResults/metrics_history.json'
-      artifact: '$(METRICS_ARTIFACT_NAME)'
-    condition: succeededOrFailed()
-
-- job: RunTests
-  dependsOn: MetricsCleanup
-  condition: in(dependencies.MetricsCleanup.result, 'Succeeded', 'Skipped')
-  timeoutInMinutes: 60 # Prevent hanging jobs
-  steps:
-  # Install Playwright browsers
-  - script: pwsh bin/Release/net8.0/playwright.ps1 install --with-deps
-    displayName: 'Install Playwright browsers'
-
-  # Run tests
   - task: DotNetCoreCLI@2
     displayName: 'Run Tests'
     inputs:
       command: 'test'
-      projects: '**/*.csproj'
+      projects: '**/*Tests.csproj'
       arguments: >-
-        --logger trx 
-        --results-directory "$(Build.SourcesDirectory)/TestResults" 
-        ${{ if ne(parameters.testFilter, '') }}--filter "${{ parameters.testFilter }}"${{ end }}
-        -- NUnit.NumberOfTestWorkers=${{ parameters.workerCount }}
-        ${{ if ne(parameters.browser, '') }}Playwright.BrowserName=$(BROWSER)${{ end }}
-    retryCountOnTaskFailure: 2
-    env:
-      ${{ if ne(parameters.browser, '') }}:
-        BROWSER: $(BROWSER)
-      HEADED: $(HEADED)
+        --configuration $(buildConfiguration)
+        --environment ${{ parameters.environment }}
+        --logger trx
+        --results-directory "$(testResultsDirectory)"
+        ${{ if ne(parameters.testTags, '') }}--filter "${{ parameters.testTags }}"
+        -- NUnit.NumberOfTestWorkers=${{ parameters.numberOfWorkers }}
+        TestSettings:Auth:CommonPassword=$(CommonPassword)
+        TestSettings:Trace:Directory=$(traceDirectory)
+        TestSettings:Trace:Enabled=true
+    continueOnError: true
 
-  # Publish test results
   - task: PublishTestResults@2
     displayName: 'Publish Test Results'
     inputs:
       testResultsFormat: 'VSTest'
-      testResultsFiles: '**/*.trx'
-      searchFolder: '$(Build.SourcesDirectory)/TestResults'
-    condition: succeededOrFailed()
+      testResultsFiles: '$(testResultsDirectory)/**/*.trx'
+      mergeTestResults: true
+      failTaskOnFailedTests: true
+      testRunTitle: '${{ parameters.environment }} - ${{ parameters.testTags }} Tests'
 
-- stage: Notifications
-  displayName: 'Send Notifications'
-  dependsOn: RunTests
-  condition: always()
-  jobs:
-  - job: SendNotifications
-    displayName: 'Send Test Results Notifications'
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    - template: templates/notifications.yml
-      parameters:
-        testResultsPath: '$(System.DefaultWorkingDirectory)/TestResults' 
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Test Artifacts'
+    condition: always()
+    inputs:
+      PathtoPublish: '$(testResultsDirectory)'
+      ArtifactName: '${{ parameters.environment }}-${{ parameters.testTags }}-test-results'
+      publishLocation: 'Container'
+
+  # Publish Playwright Report
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Playwright Report'
+    condition: always()
+    inputs:
+      PathtoPublish: '$(testResultsDirectory)/playwright-report'
+      ArtifactName: '${{ parameters.environment }}-${{ parameters.testTags }}-playwright-report'
+      publishLocation: 'Container'
+
+  # Publish Playwright Traces with special metadata
+  - task: PowerShell@2
+    displayName: 'Process Trace Files'
+    condition: always()
+    inputs:
+      targetType: 'inline'
+      script: |
+        $traceFiles = Get-ChildItem -Path "$(traceDirectory)" -Filter "*.zip" -Recurse
+        foreach ($trace in $traceFiles) {
+            $traceUrl = "$(reportBaseUrl)&artifactName=${{ parameters.environment }}-traces&fileId=$($trace.Name)"
+            $viewerUrl = "https://trace.playwright.dev/?trace=$traceUrl"
+            
+            # Add to trace metadata file
+            @{
+                traceFile = $trace.Name
+                viewUrl = $viewerUrl
+                environment = "${{ parameters.environment }}"
+                testTags = "${{ parameters.testTags }}"
+                timestamp = (Get-Date).ToString("o")
+            } | ConvertTo-Json | Out-File -FilePath "$($trace.DirectoryName)/$($trace.BaseName).meta.json"
+        }
+
+  # Publish Traces
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Playwright Traces'
+    condition: always()
+    inputs:
+      PathtoPublish: '$(traceDirectory)'
+      ArtifactName: '${{ parameters.environment }}-traces'
+      publishLocation: 'Container'
+
+  # Upload reports and traces to Blob Storage
+  - task: AzurePowerShell@5
+    displayName: 'Upload Reports to Blob Storage'
+    condition: always()
+    inputs:
+      azureSubscription: 'Your-Azure-Connection'
+      ScriptType: 'InlineScript'
+      Inline: |
+        # Get storage context
+        $storageContext = New-AzStorageContext -StorageAccountName "$(StorageAccount)" -StorageAccountKey "$(StorageKey)"
+        
+        # Create folder structure: reports/YYYY-MM-DD/buildId/
+        $dateFolder = Get-Date -Format "yyyy-MM-dd"
+        $buildFolder = "$(Build.BuildId)"
+        $blobPrefix = "reports/$dateFolder/$buildFolder"
+        
+        # Upload test results
+        Get-ChildItem -Path "$(testResultsDirectory)" -Recurse -File | ForEach-Object {
+            $blobName = "$blobPrefix/test-results/$($_.Name)"
+            Set-AzStorageBlobContent -Context $storageContext -Container "$(StorageContainer)" -File $_.FullName -Blob $blobName -Force
+        }
+        
+        # Upload Playwright report
+        Get-ChildItem -Path "$(testResultsDirectory)/playwright-report" -Recurse -File | ForEach-Object {
+            $blobName = "$blobPrefix/playwright-report/$($_.Name)"
+            Set-AzStorageBlobContent -Context $storageContext -Container "$(StorageContainer)" -File $_.FullName -Blob $blobName -Force
+        }
+        
+        # Upload traces with metadata
+        Get-ChildItem -Path "$(traceDirectory)" -Recurse -File | ForEach-Object {
+            $blobName = "$blobPrefix/traces/$($_.Name)"
+            $blobUrl = "$(blobBaseUrl)/$blobName"
+            
+            # Upload trace file
+            Set-AzStorageBlobContent -Context $storageContext -Container "$(StorageContainer)" -File $_.FullName -Blob $blobName -Force
+            
+            if ($_.Extension -eq ".zip") {
+                # Create viewer URL for trace files
+                $viewerUrl = "https://trace.playwright.dev/?trace=$blobUrl"
+                
+                # Update metadata file
+                $metaFile = "$($_.DirectoryName)/$($_.BaseName).meta.json"
+                $metadata = @{
+                    traceFile = $_.Name
+                    blobUrl = $blobUrl
+                    viewerUrl = $viewerUrl
+                    environment = "${{ parameters.environment }}"
+                    testTags = "${{ parameters.testTags }}"
+                    timestamp = (Get-Date).ToString("o")
+                    buildId = "$(Build.BuildId)"
+                    buildNumber = "$(Build.BuildNumber)"
+                }
+                $metadata | ConvertTo-Json | Out-File -FilePath $metaFile
+                
+                # Upload metadata file
+                $metaBlobName = "$blobPrefix/traces/$($_.BaseName).meta.json"
+                Set-AzStorageBlobContent -Context $storageContext -Container "$(StorageContainer)" -File $metaFile -Blob $metaBlobName -Force
+            }
+        }
+        
+        # Generate index file with links
+        $index = @{
+            buildId = "$(Build.BuildId)"
+            buildNumber = "$(Build.BuildNumber)"
+            environment = "${{ parameters.environment }}"
+            testTags = "${{ parameters.testTags }}"
+            timestamp = (Get-Date).ToString("o")
+            links = @{
+                testResults = "$(blobBaseUrl)/$blobPrefix/test-results"
+                playwrightReport = "$(blobBaseUrl)/$blobPrefix/playwright-report/index.html"
+                traces = "$(blobBaseUrl)/$blobPrefix/traces"
+            }
+        }
+        $index | ConvertTo-Json | Out-File -FilePath "$(Build.ArtifactStagingDirectory)/report-index.json"
+        Set-AzStorageBlobContent -Context $storageContext -Container "$(StorageContainer)" -File "$(Build.ArtifactStagingDirectory)/report-index.json" -Blob "$blobPrefix/index.json" -Force
+      pwsh: true
+      azurePowerShellVersion: 'LatestVersion'
+
+  # Update notification template parameters
+  - template: templates/notifications.yml
+    parameters:
+      environment: ${{ parameters.environment }}
+      testResultsPath: '$(testResultsDirectory)'
+      tracePath: '$(traceDirectory)'
+      status: '$(Agent.JobStatus)'
+      testTags: ${{ parameters.testTags }}
+      reportBaseUrl: '$(blobBaseUrl)/reports/$(Get-Date -Format "yyyy-MM-dd")/$(Build.BuildId)' 

@@ -10,66 +10,30 @@ namespace PlaywrightDemo.Infrastructure.Reporting;
 public static class TestReportManager
 {
     private static AventStack.ExtentReports.ExtentReports _extentReports = null!;
-    private static string _reportsPath = null!;
+    private static string _reportsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestResults");
     private static readonly Dictionary<string, ExtentTest> _testCache = new();
 
     public static async Task InitializeReporting()
     {
-        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        var testResultsPath = Path.GetFullPath(Path.Combine(projectRoot, "TestResults"));
-        _reportsPath = Path.GetFullPath(Path.Combine(testResultsPath, "Reports"));
+        if (_extentReports != null) return;
 
-        // Create reports directory and its subdirectories
+        // Create reports directory
         Directory.CreateDirectory(_reportsPath);
+        Directory.CreateDirectory(Path.Combine(_reportsPath, "Screenshots"));
         Directory.CreateDirectory(Path.Combine(_reportsPath, "Videos"));
         Directory.CreateDirectory(Path.Combine(_reportsPath, "Traces"));
-        Directory.CreateDirectory(Path.Combine(_reportsPath, "Logs"));
-        Directory.CreateDirectory(Path.Combine(_reportsPath, "Screenshots"));
 
-        var reportPath = Path.Combine(_reportsPath, "index.html");
-        _extentReports = new AventStack.ExtentReports.ExtentReports();
-        var htmlReporter = new ExtentHtmlReporter(reportPath);
+        // Initialize ExtentReports
+        var htmlReporter = new ExtentHtmlReporter(Path.Combine(_reportsPath, "index.html"));
+        ConfigureHtmlReporter(htmlReporter);
 
-        // Configure HTML reporter
-        htmlReporter.Config.DocumentTitle = "Test Execution Report";
-        htmlReporter.Config.ReportName = "Playwright Test Results";
-        htmlReporter.Config.Theme = AventStack.ExtentReports.Reporter.Configuration.Theme.Standard;
-
-        // Add custom logo
-        htmlReporter.Config.JS = "document.getElementsByClassName('logo')[0].style.display='none';"; // Hide default logo
-        htmlReporter.Config.CSS = @"
-            .nav-wrapper { padding-left: 20px; }
-            .nav-wrapper:before {
-                content: '';
-                display: block;
-                position: absolute;
-                top: 10px;
-                left: 20px;
-                width: 150px;
-                height: 50px;
-                background: url('https://caw.tech/wp-content/uploads/2024/11/output-onlinegiftools.gif') no-repeat;
-                background-size: contain;
-            }
-            " + htmlReporter.Config.CSS; // Append to existing CSS
-
-        htmlReporter.Config.EnableTimeline = true;
-
-        // Get Playwright version
-        using var playwright = await Playwright.CreateAsync();
-        var browser = await playwright.Chromium.LaunchAsync();
-        var browserVersion = browser.Version;
-        await browser.CloseAsync();
-
-        // Configure system info
-        _extentReports.AddSystemInfo("Operating System", RuntimeInformation.OSDescription);
-        _extentReports.AddSystemInfo("Browser", "Chromium");
-        _extentReports.AddSystemInfo("Browser Version", browserVersion);
-        _extentReports.AddSystemInfo("Playwright Version", "Latest");
-        _extentReports.AddSystemInfo("Machine Name", Environment.MachineName);
-        _extentReports.AddSystemInfo(".NET Version", Environment.Version.ToString());
-        _extentReports.AddSystemInfo("Test Framework", "NUnit");
-
+        _extentReports = new ExtentReports();
         _extentReports.AttachReporter(htmlReporter);
+
+        // Add environment info
+        _extentReports.AddSystemInfo("Environment", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development");
+        _extentReports.AddSystemInfo("Machine", Environment.MachineName);
+        _extentReports.AddSystemInfo("OS", Environment.OSVersion.ToString());
     }
 
     public static ExtentTest CreateTest(string testName)
@@ -155,32 +119,20 @@ public static class TestReportManager
     {
         if (!File.Exists(tracePath)) return;
 
-        var test = GetTest(testName);
         var relativeTracePath = Path.GetRelativePath(_reportsPath, tracePath);
 
-        test.Info($@"<div class='artifact-item'>
+        var test = _extentReports.CreateTest(testName);
+        test.Info($@"
             <h3>Trace Recording</h3>
-            <p>To view the test execution trace:</p>
-            <ol class='trace-instructions'>
-                <li>Download the trace file using the link below</li>
-                <li>Visit <a href='https://trace.playwright.dev' target='_blank'>trace.playwright.dev</a></li>
-                <li>Upload the downloaded trace file to view the step-by-step test execution</li>
-            </ol>
-            <div class='artifact-actions'>
-                <a href='{relativeTracePath}' download class='btn btn-primary'>
+            <div>
+                <a href='{relativeTracePath}' download class='btn btn-secondary'>
                     <i class='fa fa-download'></i> Download Trace
                 </a>
             </div>
             <div class='trace-note'>
-                <p><strong>Note:</strong> The trace viewer provides a detailed view of each step in the test, including:</p>
-                <ul>
-                    <li>Screenshots at each action</li>
-                    <li>DOM snapshots</li>
-                    <li>Network requests</li>
-                    <li>Console logs</li>
-                </ul>
+                <p><strong>Note:</strong> The trace file contains a detailed recording of the test execution.</p>
             </div>
-        </div>");
+        ");
     }
 
     public static void AddTestVideo(string testName, string videoPath)
@@ -350,138 +302,15 @@ public static class TestReportManager
         </script>");
     }
 
-    public static void ConfigureHtmlReporter(ExtentHtmlReporter htmlReporter)
+    private static void ConfigureHtmlReporter(ExtentHtmlReporter reporter)
     {
-        // Add custom CSS for artifacts
-        var existingCss = htmlReporter.Config.CSS ?? "";
-        htmlReporter.Config.CSS = existingCss + @"
-            .artifact-item {
-                background: #f8f9fa;
-                border-radius: 8px;
-                padding: 16px;
-                margin: 16px 0;
-            }
-
-            .artifact-item h3 {
-                margin: 0 0 12px 0;
-                font-size: 18px;
-                color: #333;
-            }
-
-            .trace-instructions {
-                margin: 16px 0;
-                padding-left: 24px;
-            }
-
-            .trace-instructions li {
-                margin: 8px 0;
-                line-height: 1.5;
-            }
-
-            .trace-note {
-                margin-top: 16px;
-                padding: 12px;
-                background: #e9ecef;
-                border-radius: 4px;
-            }
-
-            .trace-note p {
-                margin: 0 0 8px 0;
-                font-size: 14px;
-            }
-
-            .trace-note ul {
-                margin: 0;
-                padding-left: 20px;
-            }
-
-            .trace-note li {
-                margin: 4px 0;
-                font-size: 14px;
-                color: #666;
-            }
-
-            .artifact-actions {
-                margin-top: 16px;
-                display: flex;
-                gap: 8px;
-            }
-
-            .btn {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                padding: 8px 16px;
-                border-radius: 4px;
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                cursor: pointer;
-                border: none;
-                transition: background-color 0.2s;
-            }
-
-            .btn-primary {
-                background: #0d6efd;
-                color: white;
-            }
-
-            .btn-primary:hover {
-                background: #0b5ed7;
-            }
-
-            .btn-secondary {
-                background: #6c757d;
-                color: white;
-            }
-
-            .btn-secondary:hover {
-                background: #5c636a;
-            }
-
-            .btn i {
-                font-size: 14px;
-            }
-
-            video {
-                border-radius: 4px;
-                background: #000;
-                width: 100%;
-                max-width: 800px;
-                margin: 12px 0;
-            }";
+        reporter.Config.DocumentTitle = "Test Execution Report";
+        reporter.Config.ReportName = "Automated Test Results";
+        reporter.Config.Theme = AventStack.ExtentReports.Reporter.Configuration.Theme.Standard;
     }
 
     public static void FinalizeReporting()
     {
-        var metricsReport = TestMetricsManager.GenerateMetricsReport();
-        if (!string.IsNullOrEmpty(metricsReport))
-        {
-            _extentReports.AddTestRunnerLogs(metricsReport);
-        }
-
-        // Add summary information
-        var results = TestContext.CurrentContext.Result;
-        _extentReports.AddTestRunnerLogs($@"
-            <div class='test-summary'>
-                <h2>Test Run Summary</h2>
-                <div class='summary-grid'>
-                    <div class='summary-item'>
-                        <span class='label'>Total Tests:</span>
-                        <span class='value'>{_testCache.Count}</span>
-                    </div>
-                    <div class='summary-item'>
-                        <span class='label'>Start Time:</span>
-                        <span class='value'>{DateTime.Now:yyyy-MM-dd HH:mm:ss}</span>
-                    </div>
-                    <div class='summary-item'>
-                        <span class='label'>Duration:</span>
-                        <span class='value'>{TestContext.CurrentContext.TestDirectory}</span>
-                    </div>
-                </div>
-            </div>");
-
-        _extentReports.Flush();
-        _testCache.Clear();
+        _extentReports?.Flush();
     }
 }

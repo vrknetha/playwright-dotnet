@@ -1,95 +1,80 @@
 parameters:
+  - name: environment
+    type: string
   - name: testResultsPath
     type: string
-    default: '$(System.DefaultWorkingDirectory)/TestResults'
-  - name: notificationType
-    type: string # 'start' or 'completion'
-    default: 'completion'
+  - name: tracePath
+    type: string
+  - name: status
+    type: string
+  - name: testTags
+    type: string
+  - name: reportBaseUrl
+    type: string
 
 steps:
-- task: PowerShell@2
-  name: PrepareNotificationData
-  inputs:
-    targetType: 'inline'
-    script: |
-      # Common data preparation
-      $buildInfo = @{
-        Branch = "$(Build.SourceBranch)".Replace('refs/heads/', '')
-        Commit = "$(Build.SourceVersion)"
-        CommitMessage = "$(Build.SourceVersionMessage)"
-        Triggerer = "$(Build.RequestedFor)"
-        BuildNumber = "$(Build.BuildNumber)"
-        Environment = "$(System.Environment)"
-        StartTime = "$(Build.StartTime)"
-      }
-
-      if ('${{ parameters.notificationType }}' -eq 'start') {
-        # Get test count through test discovery
-        $testDiscovery = dotnet test --list-tests --configuration $(BuildConfiguration)
-        $totalTests = ($testDiscovery | Select-String "discovered" | Select-Object -Last 1) -replace '[^0-9]', ''
+  - task: PowerShell@2
+    displayName: 'Process Test Results and Traces'
+    condition: always()
+    inputs:
+      targetType: 'inline'
+      script: |
+        # Get test results summary
+        $trxFiles = Get-ChildItem -Path "${{ parameters.testResultsPath }}" -Filter "*.trx" -Recurse
+        $totalTests = 0
+        $passedTests = 0
+        $failedTests = 0
+        $failedTestDetails = @()
         
-        # Get historical data
-        $previousRuns = @(Get-BuildHistory -Count 5)
-        $avgDuration = ($previousRuns.Duration | Measure-Object -Average).Average
-        
-        # Set variables for start notification
-        Write-Host "##vso[task.setvariable variable=TotalTestsToRun]$totalTests"
-        Write-Host "##vso[task.setvariable variable=EstimatedDuration]$avgDuration"
-        Write-Host "##vso[task.setvariable variable=PreviousSuccessRate]$($previousRuns.SuccessRate)"
-      }
-      else {
-        # Get detailed test results
-        $testResults = Get-ChildItem -Path "${{ parameters.testResultsPath }}" -Filter "*.trx" -Recurse
-        $testData = @{
-          Total = 0
-          Passed = 0
-          Failed = 0
-          Skipped = 0
-          Duration = [TimeSpan]::Zero
-          FailedTests = @()
-        }
-
-        foreach ($result in $testResults) {
-          $xml = [xml](Get-Content $result.FullName)
-          $testData.Total += [int]$xml.TestRun.ResultSummary.Counters.Total
-          $testData.Passed += [int]$xml.TestRun.ResultSummary.Counters.Passed
-          $testData.Failed += [int]$xml.TestRun.ResultSummary.Counters.Failed
-          $testData.Skipped += [int]$xml.TestRun.ResultSummary.Counters.Skipped
-          $testData.Duration += [TimeSpan]::Parse($xml.TestRun.Times.duration)
-
-          # Collect failed test details
-          $failedTests = $xml.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq "Failed" }
-          foreach ($test in $failedTests) {
-            $testData.FailedTests += @{
-              Name = $test.testName
-              Error = $test.Output.ErrorInfo.Message
-              StackTrace = $test.Output.ErrorInfo.StackTrace
-              Duration = $test.duration
+        foreach ($file in $trxFiles) {
+            $xml = [xml](Get-Content $file.FullName)
+            $counters = $xml.TestRun.ResultSummary.Counters
+            $totalTests += [int]$counters.total
+            $passedTests += [int]$counters.passed
+            $failedTests += [int]$counters.failed
+            
+            # Collect failed test details
+            $failedResults = $xml.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq "Failed" }
+            foreach ($result in $failedResults) {
+                $failedTestDetails += @{
+                    name = $result.testName
+                    message = $result.Output.ErrorInfo.Message
+                }
             }
-          }
         }
-
-        # Calculate success rate and other metrics
-        $successRate = [math]::Round(($testData.Passed / $testData.Total) * 100, 2)
-        $performanceChange = Get-PerformanceChange -CurrentDuration $testData.Duration
         
-        # Set variables for completion notification
-        Write-Host "##vso[task.setvariable variable=TotalTests]$($testData.Total)"
-        Write-Host "##vso[task.setvariable variable=PassedTests]$($testData.Passed)"
-        Write-Host "##vso[task.setvariable variable=FailedTests]$($testData.Failed)"
-        Write-Host "##vso[task.setvariable variable=SkippedTests]$($testData.Skipped)"
-        Write-Host "##vso[task.setvariable variable=SuccessRate]$successRate"
-        Write-Host "##vso[task.setvariable variable=Duration]$($testData.Duration)"
-        Write-Host "##vso[task.setvariable variable=PerformanceChange]$performanceChange"
-        Write-Host "##vso[task.setvariable variable=FailedTestsJson]$(ConvertTo-Json $testData.FailedTests -Compress)"
-      }
+        # Get report links
+        $reportLinks = @{
+            testResults = "${{ parameters.reportBaseUrl }}/test-results"
+            playwrightReport = "${{ parameters.reportBaseUrl }}/playwright-report/index.html"
+            traces = "${{ parameters.reportBaseUrl }}/traces"
+        }
+        
+        # Set variables for use in notification
+        Write-Host "##vso[task.setvariable variable=TestTotal]$totalTests"
+        Write-Host "##vso[task.setvariable variable=TestPassed]$passedTests"
+        Write-Host "##vso[task.setvariable variable=TestFailed]$failedTests"
+        Write-Host "##vso[task.setvariable variable=FailedTestsJson]$(ConvertTo-Json $failedTestDetails -Compress)"
+        Write-Host "##vso[task.setvariable variable=ReportLinksJson]$(ConvertTo-Json $reportLinks -Compress)"
 
-      # Set common build info
-      foreach ($key in $buildInfo.Keys) {
-        Write-Host "##vso[task.setvariable variable=$key]$($buildInfo[$key])"
-      }
+  - template: notification-providers/teams.yml
+    parameters:
+      environment: ${{ parameters.environment }}
+      status: ${{ parameters.status }}
+      totalTests: $(TestTotal)
+      passedTests: $(TestPassed)
+      failedTests: $(TestFailed)
+      testTags: ${{ parameters.testTags }}
+      failedTestsJson: $(FailedTestsJson)
+      reportLinksJson: $(ReportLinksJson)
 
-- ${{ if eq(parameters.notificationType, 'start') }}:
-  - template: notification-providers/start-notification.yml
-- ${{ if eq(parameters.notificationType, 'completion') }}:
-  - template: notification-providers/completion-notification.yml 
+  - template: notification-providers/email.yml
+    parameters:
+      environment: ${{ parameters.environment }}
+      status: ${{ parameters.status }}
+      totalTests: $(TestTotal)
+      passedTests: $(TestPassed)
+      failedTests: $(TestFailed)
+      testTags: ${{ parameters.testTags }}
+      failedTestsJson: $(FailedTestsJson)
+      reportLinksJson: $(ReportLinksJson) 

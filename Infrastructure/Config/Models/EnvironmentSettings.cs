@@ -2,7 +2,7 @@ namespace PlaywrightDemo.Infrastructure.Config.Models;
 
 public class EnvironmentSettings
 {
-    public string Name { get; set; } = "Development";
+    public string Name { get; set; } = string.Empty;
     public string BaseUrl { get; set; } = string.Empty;
     public string ApiBaseUrl { get; set; } = string.Empty;
 }

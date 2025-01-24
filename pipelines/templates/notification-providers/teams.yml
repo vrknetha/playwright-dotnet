@@ -1,38 +1,78 @@
+parameters:
+  - name: environment
+    type: string
+  - name: status
+    type: string
+  - name: totalTests
+    type: string
+  - name: passedTests
+    type: string
+  - name: failedTests
+    type: string
+
 steps:
-- task: PowerShell@2
-  name: SendTeamsNotification
-  condition: always()
-  inputs:
-    targetType: 'inline'
-    script: |
-      $body = @{
-          "@type" = "MessageCard"
-          "@context" = "http://schema.org/extensions"
-          "summary" = "Test Results Summary"
-          "themeColor" = "$(FailedTests)" -eq "0" ? "00FF00" : "FF0000"
-          "sections" = @(
-              @{
-                  "activityTitle" = "Playwright Test Results - Build $(Build.BuildNumber)"
-                  "facts" = @(
-                      @{
-                          "name" = "Total Tests"
-                          "value" = "$(TotalTests)"
-                      }
-                      @{
-                          "name" = "Passed Tests"
-                          "value" = "$(PassedTests)"
-                      }
-                      @{
-                          "name" = "Failed Tests"
-                          "value" = "$(FailedTests)"
-                      }
-                  )
-              }
-          )
-      }
-      
-      $jsonBody = ConvertTo-Json $body -Depth 10
-      
-      Invoke-RestMethod -Uri "$(TeamsWebhookUrl)" -Method Post -Body $jsonBody -ContentType 'application/json'
+  - task: PowerShell@2
+    displayName: 'Send Teams Notification'
+    condition: always()
+    inputs:
+      targetType: 'inline'
+      script: |
+        $status = '${{ parameters.status }}'
+        $color = switch ($status) {
+            'Succeeded' { '00ff00' }
+            'Failed' { 'ff0000' }
+            default { 'ffa500' }
+        }
+        
+        $body = @{
+            "@type" = "MessageCard"
+            "@context" = "http://schema.org/extensions"
+            "themeColor" = $color
+            "summary" = "Test Run Summary - ${{ parameters.environment }}"
+            "sections" = @(
+                @{
+                    "activityTitle" = "Test Run Results - ${{ parameters.environment }}"
+                    "activitySubtitle" = "Build: $(Build.BuildNumber)"
+                    "facts" = @(
+                        @{
+                            "name" = "Environment"
+                            "value" = "${{ parameters.environment }}"
+                        }
+                        @{
+                            "name" = "Status"
+                            "value" = "$status"
+                        }
+                        @{
+                            "name" = "Total Tests"
+                            "value" = "${{ parameters.totalTests }}"
+                        }
+                        @{
+                            "name" = "Passed Tests"
+                            "value" = "${{ parameters.passedTests }}"
+                        }
+                        @{
+                            "name" = "Failed Tests"
+                            "value" = "${{ parameters.failedTests }}"
+                        }
+                    )
+                }
+            )
+            "potentialAction" = @(
+                @{
+                    "@type" = "OpenUri"
+                    "name" = "View Pipeline"
+                    "targets" = @(
+                        @{
+                            "os" = "default"
+                            "uri" = "$(System.TeamFoundationCollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)"
+                        }
+                    )
+                }
+            )
+        }
+        
+        $jsonBody = $body | ConvertTo-Json -Depth 10
+        
+        Invoke-RestMethod -Uri "$(TeamsWebhookUrl)" -Method Post -Body $jsonBody -ContentType 'application/json'
   env:
     TeamsWebhookUrl: $(TeamsWebhookUrl) 

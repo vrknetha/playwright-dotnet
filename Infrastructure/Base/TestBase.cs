@@ -210,7 +210,6 @@ public class TestBase : IAsyncDisposable
 
         try
         {
-            // First: Handle all logs, test results, and error messages
             // Add error details to report if test failed
             if (testFailed)
             {
@@ -226,17 +225,33 @@ public class TestBase : IAsyncDisposable
                 }
             }
 
+            // Handle trace recording
+            if (Context != null)
+            {
+                try
+                {
+                    var tracePath = Path.Combine(GetReportsPath(), "Traces", $"{testName}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+                    Directory.CreateDirectory(Path.GetDirectoryName(tracePath)!);
+                    await Context.Tracing.StopAsync(new() { Path = tracePath });
+                    TestContext.AddTestAttachment(tracePath);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Failed to save trace recording");
+                }
+            }
+
             // Clean up API context if needed
             if (!string.IsNullOrEmpty(Settings.Environment.ApiBaseUrl))
             {
                 try
                 {
-                    LogInfo("Cleaning up API resources...");
+                    Logger.LogInformation("Cleaning up API resources...");
                     await ApiContextManager.DisposeAsync();
                 }
                 catch (Exception ex)
                 {
-                    LogError($"Error during API resource cleanup: {ex.Message}", ex);
+                    Logger.LogError(ex, "Error during API resource cleanup");
                 }
             }
 
@@ -248,98 +263,10 @@ public class TestBase : IAsyncDisposable
                 testFailed ? TestContext.CurrentContext.Result.Message ?? "Unknown failure" : "",
                 TestContext.CurrentContext.Test.Properties["Category"]?.Cast<string>().FirstOrDefault() ?? ""
             );
-
-            if (Page != null)
-            {
-                try
-                {
-                    // First: Handle trace recording (before closing context)
-                    var tracePath = await _traceManager.StopTracingAsync(testFailed);
-                    if (!string.IsNullOrEmpty(tracePath))
-                    {
-                        TestReportManager.AddTestTrace(testName, tracePath);
-                    }
-
-                    // Second: Handle video recording
-                    if (Context != null && Settings.Reporting.Video.Enabled)
-                    {
-                        try
-                        {
-                            var video = Page.Video;
-                            if (video != null)
-                            {
-                                var videoPath = await video.PathAsync();
-                                if (!string.IsNullOrEmpty(videoPath))
-                                {
-                                    // Wait for video to be saved
-                                    await Page.CloseAsync();
-                                    await Context.CloseAsync();
-
-                                    // Create final video path
-                                    var videoFileName = $"{testName}_{DateTime.Now:yyyyMMdd_HHmmss}.webm";
-                                    var destinationPath = GetVideoPath(videoFileName);
-                                    Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-
-                                    // Ensure source video exists and copy it
-                                    if (File.Exists(videoPath))
-                                    {
-                                        try
-                                        {
-                                            File.Move(videoPath, destinationPath, true);
-                                        }
-                                        catch
-                                        {
-                                            File.Copy(videoPath, destinationPath, true);
-                                            try { File.Delete(videoPath); } catch { }
-                                        }
-                                        TestReportManager.AddTestVideo(testName, destinationPath);
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            LogError($"Error handling test video: {ex.Message}", ex);
-                        }
-                    }
-
-                    // Finally: Handle failure screenshots
-                    if (testFailed)
-                    {
-                        var screenshotFileName = $"{testName}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
-                        var screenshotPath = Path.Combine(GetReportsPath(), "Screenshots", screenshotFileName);
-                        Directory.CreateDirectory(Path.GetDirectoryName(screenshotPath)!);
-                        await Page.ScreenshotAsync(new() { Path = screenshotPath, FullPage = true });
-                        TestReportManager.AddTestScreenshot(testName, screenshotPath, "Failure Screenshot");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogError($"Error during artifact collection: {ex.Message}", ex);
-                }
-            }
-
-            // Update final test status in report
-            if (testFailed)
-            {
-                TestReport?.Fail($"Test failed: {TestContext.CurrentContext.Result.Message}");
-            }
-            else
-            {
-                TestReport?.Pass("Test passed successfully");
-            }
-
-            LogInfo($"Test completed with status: {(testFailed ? "Failed" : "Passed")}");
-        }
-        catch (Exception ex)
-        {
-            LogError($"Error during test cleanup: {ex.Message}", ex);
-            throw;
         }
         finally
         {
-            // Dispose of resources in reverse order of creation
-            await ApiContextManager.DisposeAsync();
+            // Cleanup resources
             if (Context != null)
             {
                 await Context.CloseAsync();
