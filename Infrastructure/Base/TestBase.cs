@@ -156,24 +156,11 @@ public class TestBase : IAsyncDisposable
         // Initialize and verify auth state if specified
         if (!string.IsNullOrEmpty(AuthStateToUse))
         {
-            try
+            AuthHelper = new AuthHelper();
+            var authStatePath = Path.Combine(GetAuthStatePath(), AuthStateToUse);
+            if (await AuthHelper.VerifyAuthStateAsync(authStatePath))
             {
-                AuthHelper = new AuthHelper();
-                var authStatePath = Path.Combine(GetAuthStatePath(), AuthStateToUse);
-
-                if (await AuthHelper.VerifyAuthStateAsync(authStatePath))
-                {
-                    LogInfo($"Using authentication state: {AuthStateToUse}");
-                    contextOptions.StorageStatePath = authStatePath;
-                }
-                else
-                {
-                    LogWarning($"Authentication state is invalid or expired: {AuthStateToUse}");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError($"Failed to apply authentication state: {AuthStateToUse}", ex);
+                contextOptions.StorageStatePath = authStatePath;
             }
         }
 

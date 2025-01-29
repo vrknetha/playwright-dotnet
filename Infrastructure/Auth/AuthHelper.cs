@@ -11,7 +11,7 @@ using System.IO;
 
 namespace PlaywrightDemo.Infrastructure.Auth;
 
-public class AuthHelper
+public class AuthHelper : IAsyncDisposable
 {
     private readonly ILogger _logger;
     private readonly TestSettings _settings;

@@ -10,6 +10,18 @@ public class TestSettings
     public AuthSettings Auth { get; set; } = new();
 }
 
+public class EnvironmentSettings
+{
+    public string Name { get; set; } = string.Empty;
+    public string BaseUrl { get; set; } = string.Empty;
+    public string ApiBaseUrl { get; set; } = string.Empty;
+}
+
+public class AuthSettings
+{
+    public string CommonPassword { get; set; } = string.Empty;
+}
+
 public class TestDataSettings
 {
     public string Locale { get; set; } = "en";

@@ -31,9 +31,8 @@ public class LoginPage : BasePage
         await Page.FillAsync("input[name='password']", user.Password);
 
         Logger.LogInformation("Submitting login form");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).First.ClickAsync();
 
-        await SaveSessionStorageAsync(user.Username);
         Logger.LogInformation("Login successful");
     }
 
@@ -52,18 +51,7 @@ public class LoginPage : BasePage
 
     public async Task ExpectLoginSuccessfulAsync()
     {
-        await Expect(_page.GetByText("Dashboard").First).ToBeAttachedAsync();
-    }
-
-    private async Task SaveSessionStorageAsync(string username)
-    {
-        var authPath = TestBase.GetAuthStatePath();
-        var filePath = Path.Combine(authPath, $"{username}_state.json");
-
-        await _page.Context.StorageStateAsync(new BrowserContextStorageStateOptions
-        {
-            Path = filePath
-        });
+        await Expect(_page.Locator("#copilot-dashboard-entrypoint-textarea").First).ToBeVisibleAsync(new() { Timeout = 30000 });
     }
 }
 

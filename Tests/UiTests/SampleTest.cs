@@ -20,6 +20,9 @@ public class SampleTest : TestBase
 
     public override async Task BaseTestInitialize()
     {
+        // Set this before calling base initialization
+        AuthStateToUse = "AniketSelokar-CawTech_state.json";
+
         await base.BaseTestInitialize();
         _dashboardPage = new GitHubDashboardPage(Page);
         // log
@@ -99,4 +102,12 @@ public class SampleTest : TestBase
     //     var username = userJson.GetProperty("login").GetString();
     //     Assert.That(username, Is.EqualTo(Configuration["GitHubUsername"]), "Authenticated user mismatch");
     // }
+
+    [Test]
+    public async Task AuthenticatedTestExample()
+    {
+        // Directly navigate to authenticated page
+        await Page.GotoAsync(Settings.Environment.BaseUrl + "/dashboard");
+        // No login needed - already authenticated via auth state
+    }
 }

@@ -500,3 +500,25 @@ public static class TestMetricsManager
         }
     }
 }
+
+public class TestResult
+{
+    public bool IsSuccess { get; set; }
+    public string ErrorMessage { get; set; } = string.Empty;
+    public TimeSpan Duration { get; set; }
+}
+
+public class TestMetrics<T> where T : notnull
+{
+    private readonly ConcurrentDictionary<T, TestResult> _results = new();
+
+    public void AddResult(T key, TestResult result)
+    {
+        _results.TryAdd(key, result);
+    }
+
+    public TestResult? GetResult(T key)
+    {
+        return _results.TryGetValue(key, out var result) ? result : null;
+    }
+}
