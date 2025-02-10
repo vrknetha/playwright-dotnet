@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 namespace PlaywrightDemo.Tests.UiTests
 {
     [TestFixture]
-    public class SampleTest : FixtureTestBase
-
+    public class GitHubTest : FixtureTestBase
+    
     {
         [Test]
         [RequiredFixtures(typeof(GitHubDashboardPage), typeof(GitHubApiPage))]

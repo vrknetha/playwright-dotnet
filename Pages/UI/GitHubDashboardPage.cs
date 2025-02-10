@@ -1,11 +1,14 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
+using System.Threading.Tasks;
 
 namespace PlaywrightDemo.Pages.UI;
 
 public class GitHubDashboardPage : BasePage
 {
+    private const string CREATE_REPO_BUTTON = "text=New";
+
     public GitHubDashboardPage(IPage page) : base(page)
     {
         Logger.LogInformation("Initializing GitHub Dashboard Page");
@@ -56,5 +59,16 @@ public class GitHubDashboardPage : BasePage
         Logger.LogInformation("Refreshing dashboard page");
         await Page.ReloadAsync();
         await Expect(ReposList).ToBeVisibleAsync();
+    }
+
+    public async Task GoToAsync()
+    {
+        await Page.GotoAsync("/");
+    }
+
+    public async Task<bool> IsVisible()
+    {
+        var element = await Page.QuerySelectorAsync(CREATE_REPO_BUTTON);
+        return element != null;
     }
 }
