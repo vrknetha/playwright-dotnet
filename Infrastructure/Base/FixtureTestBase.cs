@@ -19,30 +19,14 @@ using AventStack.ExtentReports;
 namespace PlaywrightDemo.Infrastructure.Base
 {
     [TestFixture]
-    public class FixtureTestBase : IAsyncDisposable
+    public class FixtureTestBase : TestBase
     {
-        protected ILogger Logger { get; }
-        protected TestSettings Settings { get; }
         protected ContextManager ContextManager { get; private set; } = null!;
-        protected IBrowser Browser { get; private set; } = null!;
-        protected ExtentTest TestReport { get; private set; } = null!;
         protected ContextResult CurrentContext { get; private set; } = null!;
-
         private readonly Dictionary<string, ITestFixture> _availableFixtures;
 
-        public FixtureTestBase()
+        public FixtureTestBase() : base()
         {
-            var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.AddConsole();
-                builder.SetMinimumLevel(LogLevel.Information);
-            });
-            Logger = loggerFactory.CreateLogger<FixtureTestBase>();
-            LoggerManager.SetLogger(Logger);
-
-            ConfigurationLoader.Initialize(Logger);
-            Settings = ConfigurationLoader.GetSettings<TestSettings>();
-
             // Initialize available fixtures
             _availableFixtures = InitializeAvailableFixtures();
         }
@@ -56,29 +40,10 @@ namespace PlaywrightDemo.Infrastructure.Base
                 .ToDictionary(f => f.FixtureKey);
         }
 
-        [OneTimeSetUp]
-        public static async Task AssemblyInitialize()
-        {
-            await TestReportManager.InitializeReporting();
-        }
-
-        [OneTimeTearDown]
-        public static void AssemblyCleanup()
-        {
-            TestReportManager.FinalizeReporting();
-        }
-
         [SetUp]
-        public virtual async Task TestInitialize()
+        public override async Task BaseTestInitialize()
         {
-            TestReport = TestReportManager.CreateTest(TestContext.CurrentContext.Test.Name);
-
-            var playwright = await Playwright.CreateAsync();
-            Browser = await playwright[Settings.Browser.Type].LaunchAsync(new()
-            {
-                Headless = Settings.Browser.Headless,
-                SlowMo = Settings.Browser.SlowMo
-            });
+            await base.BaseTestInitialize();
 
             ContextManager = new ContextManager(Browser, Logger);
 
@@ -117,34 +82,13 @@ namespace PlaywrightDemo.Infrastructure.Base
             });
         }
 
-        [TearDown]
-        public virtual async Task TestCleanup()
-        {
-            if (TestContext.CurrentContext.Result.Outcome.Status == NUnit.Framework.Interfaces.TestStatus.Failed)
-            {
-                var errorMessage = TestContext.CurrentContext.Result.Message;
-                var stackTrace = TestContext.CurrentContext.Result.StackTrace;
-                if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    TestReport?.Error($"Test Failed: {errorMessage}");
-                    if (!string.IsNullOrEmpty(stackTrace))
-                    {
-                        TestReport?.Error($"Stack Trace: {stackTrace}");
-                    }
-                }
-            }
-        }
-
-        public async ValueTask DisposeAsync()
+        public override async ValueTask DisposeAsync()
         {
             if (ContextManager != null)
             {
                 await ContextManager.DisposeAsync();
             }
-            if (Browser != null)
-            {
-                await Browser.DisposeAsync();
-            }
+            await base.DisposeAsync();
         }
 
         // Helper method to get a strongly-typed page object

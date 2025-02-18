@@ -8,31 +8,31 @@ using PlaywrightDemo.Infrastructure.Base;
 using PlaywrightDemo.Infrastructure.TestData.Models;
 using PlaywrightDemo.Infrastructure.Logging;
 using PlaywrightDemo.Pages.UI;
+using PlaywrightDemo.Infrastructure.Config;
 
 namespace PlaywrightDemo.Pages.UI;
 
 public class LoginPage : BasePage
 {
     private readonly IPage _page;
-    private string CommonPassword => Settings.Auth.CommonPassword;
+    private ILocator UsernameInput => _page.Locator("#login_field");
+    private ILocator PasswordInput => _page.Locator("#password");
+    private ILocator SignInButton => _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).First;
 
     public LoginPage(IPage page) : base(page)
     {
         _page = page;
     }
 
-    public async Task LoginAsync(User user)
+    public async Task LoginWithCredentialsAsync(string username, string password)
     {
-        Logger.LogInformation("Navigating to login page");
-        await Page.GotoAsync($"{Settings.Environment.BaseUrl}/login");
-
-        Logger.LogInformation("Filling login credentials");
-        await Page.FillAsync("input[name='login']", user.Username);
-        await Page.FillAsync("input[name='password']", user.Password);
-
-        Logger.LogInformation("Submitting login form");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).First.ClickAsync();
-
+        Logger.LogInformation($"Logging in as user: {username}");
+        await GoToLoginPage();
+        await Expect(SignInButton).ToBeVisibleAsync();
+        await UsernameInput.FillAsync(username);
+        await PasswordInput.FillAsync(password);
+        await SignInButton.ClickAsync();
+        await Page.WaitForURLAsync("**/dashboard");
         Logger.LogInformation("Login successful");
     }
 
@@ -52,6 +52,13 @@ public class LoginPage : BasePage
     public async Task ExpectLoginSuccessfulAsync()
     {
         await Expect(_page.Locator("#copilot-dashboard-entrypoint-textarea").First).ToBeVisibleAsync(new() { Timeout = 30000 });
+    }
+
+    private async Task GoToLoginPage()
+    {
+        var loginUrl = $"{Settings.Environment.BaseUrl}/login";
+        await Page.GotoAsync(loginUrl);
+        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
     }
 }
 

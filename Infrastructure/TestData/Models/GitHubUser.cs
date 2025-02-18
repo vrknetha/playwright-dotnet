@@ -1,6 +1,8 @@
-namespace AuthSetup.Models;
+using System;
 
-public class User
+namespace PlaywrightDemo.Infrastructure.TestData.Models;
+
+public class GitHubUser
 {
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;

@@ -11,5 +11,9 @@ namespace PlaywrightDemo.Infrastructure.Fixtures
         {
             Fixtures = fixtures;
         }
+
+        public static Type[] Pages(params Type[] types) => types;
+        public static Type[] Api(params Type[] types) => types;
+        public static Type[] All(params Type[] types) => types;
     }
 }

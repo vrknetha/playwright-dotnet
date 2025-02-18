@@ -4,10 +4,11 @@ using Microsoft.Playwright;
 using PlaywrightDemo.Infrastructure.Config.Models;
 using PlaywrightDemo.Infrastructure.Config;
 using PlaywrightDemo.Infrastructure.Logging;
-using PlaywrightDemo.Infrastructure.TestData.Models;
+using AuthSetup.Models;
 using NUnit.Framework;
 using System.Runtime.CompilerServices;
 using System.IO;
+using PlaywrightDemo.Pages.UI;
 
 namespace PlaywrightDemo.Infrastructure.Auth;
 
@@ -44,8 +45,7 @@ public class AuthHelper : IAsyncDisposable
             WriteIndented = true
         };
 
-        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        _authDirectory = Path.Combine(projectRoot, "TestResults", "Reports", ".auth");
+        _authDirectory = Path.Combine(Directory.GetCurrentDirectory(), ".auth");
         _authStateCache = new Dictionary<string, string>();
         _validatedStates = new HashSet<string>();
 
@@ -91,8 +91,7 @@ public class AuthHelper : IAsyncDisposable
 
     private static List<User> LoadUsersFromConfigFile()
     {
-        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        var configFilePath = Path.Combine(projectRoot, "users.json");
+        var configFilePath = Path.Combine(Directory.GetCurrentDirectory(), "users.json");
         Console.WriteLine($"Loading users from config file path: {configFilePath}");
 
         if (!File.Exists(configFilePath))
@@ -129,8 +128,10 @@ public class AuthHelper : IAsyncDisposable
             context = await _browser!.NewContextAsync();
             page = await context.NewPageAsync();
 
-            await NavigateToLoginPage(page);
-            await PerformLogin(page, user.Username, _commonPassword);
+            var loginPage = new LoginPage(page);
+            await loginPage.LoginWithCredentialsAsync(user.Username, _commonPassword);
+            await loginPage.ExpectLoginSuccessfulAsync();
+
             await SaveAuthState(context, filePath);
 
             _authStateCache[filename] = filePath;
@@ -147,71 +148,6 @@ public class AuthHelper : IAsyncDisposable
         {
             await CleanupResources(context, page);
         }
-    }
-
-    private async Task NavigateToLoginPage(IPage page)
-    {
-        try
-        {
-            LogMessage(LogLevel.Information, $"Navigating to login page: {_settings.Environment.BaseUrl}/login");
-            await page.GotoAsync($"{_settings.Environment.BaseUrl}/login");
-
-            // Wait for login form to be ready
-            await page.WaitForSelectorAsync("input[name='username']");
-            await page.WaitForSelectorAsync("input[name='password']");
-        }
-        catch (Exception ex)
-        {
-            LogMessage(LogLevel.Error, "Failed to navigate to login page", ex);
-            throw;
-        }
-    }
-
-    private async Task PerformLogin(IPage page, string username, string password)
-    {
-        try
-        {
-            _logger.LogInformation("Filling login credentials for user: {Username}", username);
-            await page.FillAsync("input[name='login']", username);
-            await page.FillAsync("input[name='password']", password);
-
-            _logger.LogInformation("Submitting login form for user: {Username}", username);
-
-            // Wait for navigation after clicking submit
-            var waitForUrlTask = page.WaitForURLAsync("**/*", new() { WaitUntil = WaitUntilState.NetworkIdle });
-            await page.ClickAsync("button[type='submit']");
-            await waitForUrlTask;
-
-            if (page.Url.Contains("/login"))
-            {
-                var errorMessage = await GetLoginErrorMessage(page);
-                throw new AuthenticationException($"Login failed for user: {username}. {errorMessage}");
-            }
-
-            _logger.LogInformation("Login successful for user: {Username}", username);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Login attempt failed for user: {Username}", username);
-            throw;
-        }
-    }
-
-    private async Task<string> GetLoginErrorMessage(IPage page)
-    {
-        try
-        {
-            var errorElement = await page.QuerySelectorAsync(".error-message");
-            if (errorElement != null)
-            {
-                return await errorElement.TextContentAsync() ?? "Unknown error occurred";
-            }
-        }
-        catch
-        {
-            // Ignore error element reading failures
-        }
-        return "No error message available";
     }
 
     private async Task SaveAuthState(IBrowserContext context, string filePath)

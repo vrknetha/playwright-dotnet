@@ -272,7 +272,7 @@ public class TestBase : IAsyncDisposable
         }
     }
 
-    public async ValueTask DisposeAsync()
+    public virtual async ValueTask DisposeAsync()
     {
         if (AuthHelper != null)
         {

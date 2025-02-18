@@ -5,12 +5,12 @@ using PlaywrightDemo.Infrastructure.Fixtures;
 using PlaywrightDemo.Pages.UI;
 using PlaywrightDemo.Pages.API;
 using System.Threading.Tasks;
+using static PlaywrightDemo.Infrastructure.Fixtures.RequiredFixturesAttribute;
 
 namespace PlaywrightDemo.Tests.UiTests
 {
     [TestFixture]
     public class GitHubTest : FixtureTestBase
-    
     {
         [Test]
         [RequiredFixtures(typeof(GitHubDashboardPage), typeof(GitHubApiPage))]
