@@ -43,3 +43,7 @@ Desktop.ini
 # Logs
 *.log
 logs/
+
+#auth states
+.auth/*
+.auth
